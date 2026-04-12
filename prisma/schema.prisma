@@ -1,6 +1,3 @@
-// prisma/schema.prisma
-// Middleby Food Processing - Quote Management System
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,7 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── USERS & AUTH ─────────────────────────────────────────────
+// ─── ROLES ────────────────────────────────────────────────────
+// salesperson: builds quotes, least access
+// reviewer:    reviews quotes, edits catalog for own companies
+// manager:     approves quotes (final step), read-only catalog unless isAdmin
+// supervisor:  corporate level, full access across all companies
 
 enum Role {
   salesperson
@@ -19,26 +20,68 @@ enum Role {
   supervisor
 }
 
-model User {
-  id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
-  password      String   // bcrypt hashed
-  role          Role     @default(salesperson)
-  companyAccess String[] // company keys this user can access
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+enum QuoteStatus {
+  draft
+  submitted
+  info_requested
+  reviewed
+  approved
+  expired
+}
 
-  // Relations
-  createdQuotes  Quote[]       @relation("CreatedBy")
-  reviewedQuotes Quote[]       @relation("ReviewedBy")
-  approvedQuotes Quote[]       @relation("ApprovedBy")
-  auditLogs      AuditLog[]
+// ─── USERS ────────────────────────────────────────────────────
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  password        String
+  role            Role     @default(salesperson)
+  isAdmin         Boolean  @default(false)
+  primaryCompanyId String?
+  primaryCompany  Company? @relation("PrimaryCompany", fields: [primaryCompanyId], references: [id])
+  additionalCompanies CompanyUser[]
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  createdQuotes   Quote[]    @relation("CreatedBy")
+  reviewedQuotes  Quote[]    @relation("ReviewedBy")
+  approvedQuotes  Quote[]    @relation("ApprovedBy")
+  auditLogs       AuditLog[]
+}
+
+// ─── COMPANIES ────────────────────────────────────────────────
+model Company {
+  id           String  @id @default(cuid())
+  key          String  @unique
+  name         String
+  color        String  @default("#0074BB")
+  description  String?
+  execSummary  String?
+  logo         String?
+  machineImage String?
+  rates        Json    @default("{}")
+  active       Boolean @default(true)
+  sortOrder    Int     @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  primaryUsers     User[]           @relation("PrimaryCompany")
+  additionalUsers  CompanyUser[]
+  catalogSections  CatalogSection[]
+}
+
+model CompanyUser {
+  id        String  @id @default(cuid())
+  userId    String
+  companyId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
 }
 
 // ─── CUSTOMERS ────────────────────────────────────────────────
-
 model Customer {
   id        String   @id @default(cuid())
   name      String
@@ -47,7 +90,7 @@ model Customer {
   contact   String?
   email     String?
   phone     String?
-  rep       String?  // default sales rep name
+  rep       String?
   industry  String?
   notes     String?
   active    Boolean  @default(true)
@@ -57,146 +100,97 @@ model Customer {
   quotes Quote[]
 }
 
-// ─── COMPANIES (sub-brands) ───────────────────────────────────
-
-model Company {
-  id           String  @id @default(cuid())
-  key          String  @unique // e.g. "rvp", "thurne", "pacpro"
-  name         String
-  color        String  @default("#0074BB")
-  description  String?
-  execSummary  String?
-  logo         String? // base64 or URL
-  machineImage String? // base64 or URL
-
-  // Financial rates (stored as JSON for flexibility)
-  rates Json @default("{}")
-
-  active    Boolean  @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  catalogSections CatalogSection[]
-}
-
 // ─── CATALOG ──────────────────────────────────────────────────
-
 model CatalogSection {
   id        String  @id @default(cuid())
   companyId String
   name      String
   sortOrder Int     @default(0)
-
-  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  items   CatalogItem[]
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items     CatalogItem[]
 
   @@unique([companyId, name])
 }
 
 model CatalogItem {
-  id        String @id @default(cuid())
-  sectionId String
-  name      String
-  fixedPrice  Float  @default(0)
-  variablePrice Float @default(0)
-  materialCost  Float @default(0)
-  laborHours    Float @default(0)
+  id            String  @id @default(cuid())
+  sectionId     String
+  name          String
+  fixedPrice    Float   @default(0)
+  variablePrice Float   @default(0)
+  materialCost  Float   @default(0)
+  laborHours    Float   @default(0)
   description   String?
   note          String?
   hasQuantity   Boolean @default(false)
   quantityLabel String?
-
-  // Options stored as JSON array: [{name, fixedPrice, variablePrice}]
-  options Json?
-
-  // Sub-options stored as JSON
-  subOptions Json?
-
-  active    Boolean  @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  options       Json?
+  subOptions    Json?
+  active        Boolean @default(true)
+  sortOrder     Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   section CatalogSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 }
 
 // ─── QUOTES ───────────────────────────────────────────────────
-
-enum QuoteStatus {
-  draft
-  submitted    // salesperson submitted to reviewer
-  reviewed     // reviewer approved, sent to manager
-  approved     // manager approved - final
-  rejected     // rejected at any stage
-  expired
-}
-
 model Quote {
-  id             String      @id @default(cuid())
-  quoteNumber    String      @unique // e.g. "QC-100391"
-  revision       Int         @default(1)
-  status         QuoteStatus @default(draft)
-  mode           String      @default("bundle") // "bundle" or "individual"
+  id              String      @id @default(cuid())
+  quoteNumber     String      @unique
+  revision        Int         @default(1)
+  status          QuoteStatus @default(draft)
+  mode            String      @default("bundle")
 
-  // Customer
-  customerId     String?
-  customer       Customer?   @relation(fields: [customerId], references: [id])
-  customerName   String?     // denormalized for quick access
-  contactName    String?
-  contactEmail   String?
-  plantName      String?
-  repName        String?
+  customerId      String?
+  customer        Customer?   @relation(fields: [customerId], references: [id])
+  customerName    String?
+  contactName     String?
+  contactEmail    String?
+  plantName       String?
+  repName         String?
+  purpose         String?
 
-  // Purpose / notes
-  purpose        String?
+  selections      Json        @default("{}")
+  pricingSnapshot Json?
+  grandTotal      Float       @default(0)
+  companyKeys     String[]
 
-  // The full quote data snapshot (selections, pricing at time of save)
-  selections     Json        // {companyKey: {itemId: {on, op, q, subs}}}
-  pricingSnapshot Json?      // frozen pricing at time of finalization
-  grandTotal     Float       @default(0)
+  createdById     String?
+  createdBy       User?       @relation("CreatedBy", fields: [createdById], references: [id])
+  submittedAt     DateTime?
+  submitNote      String?
 
-  // Which companies are involved
-  companyKeys    String[]
+  reviewerId      String?
+  reviewedBy      User?       @relation("ReviewedBy", fields: [reviewerId], references: [id])
+  reviewedAt      DateTime?
+  reviewNote      String?
+  infoRequestNote String?
+  infoRequestedAt DateTime?
 
-  // Workflow
-  createdById    String?
-  createdBy      User?       @relation("CreatedBy", fields: [createdById], references: [id])
+  managerId       String?
+  approvedBy      User?       @relation("ApprovedBy", fields: [managerId], references: [id])
+  approvedAt      DateTime?
+  managerNote     String?
 
-  submittedAt    DateTime?
-  submitNote     String?
+  lockedPdfUrl    String?
+  expiresAt       DateTime?
+  terms           String?
 
-  reviewerId     String?
-  reviewedBy     User?       @relation("ReviewedBy", fields: [reviewerId], references: [id])
-  reviewedAt     DateTime?
-  reviewNote     String?
-
-  managerId      String?
-  approvedBy     User?       @relation("ApprovedBy", fields: [managerId], references: [id])
-  approvedAt     DateTime?
-  managerNote    String?
-
-  // Expiration
-  expiresAt      DateTime?
-
-  // Terms snapshot
-  terms          String?
-
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   auditLogs AuditLog[]
 }
 
 // ─── AUDIT LOG ────────────────────────────────────────────────
-
 model AuditLog {
   id        String   @id @default(cuid())
   quoteId   String?
   quote     Quote?   @relation(fields: [quoteId], references: [id])
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
-  action    String   // "created", "submitted", "reviewed", "approved", "rejected", "price_changed", etc.
-  details   Json?    // {field: "fixedPrice", oldValue: 100, newValue: 200}
+  action    String
+  details   Json?
   createdAt DateTime @default(now())
 }
