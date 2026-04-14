@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ROLES ────────────────────────────────────────────────────
+// salesperson: builds quotes, least access
+// reviewer:    reviews quotes, edits catalog for own companies
+// manager:     approves quotes (final step), read-only catalog unless isAdmin
+// supervisor:  corporate level, full access across all companies
+
+enum Role {
+  salesperson
+  reviewer
+  manager
+  supervisor
+}
+
+enum QuoteStatus {
+  draft
+  submitted
+  info_requested
+  reviewed
+  approved
+  expired
+}
+
+// ─── USERS ────────────────────────────────────────────────────
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  password        String
+  role            Role     @default(salesperson)
+  isAdmin         Boolean  @default(false)
+  primaryCompanyId String?
+  primaryCompany  Company? @relation("PrimaryCompany", fields: [primaryCompanyId], references: [id])
+  additionalCompanies CompanyUser[]
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  createdQuotes   Quote[]    @relation("CreatedBy")
+  reviewedQuotes  Quote[]    @relation("ReviewedBy")
+  approvedQuotes  Quote[]    @relation("ApprovedBy")
+  auditLogs       AuditLog[]
+}
+
+// ─── COMPANIES ────────────────────────────────────────────────
+model Company {
+  id           String  @id @default(cuid())
+  key          String  @unique
+  name         String
+  color        String  @default("#0074BB")
+  description  String?
+  execSummary  String?
+  logo         String?
+  machineImage String?
+  rates        Json    @default("{}")
+  division     String  @default("protein") // protein or bakery
+  active       Boolean @default(true)
+  sortOrder    Int     @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  primaryUsers     User[]           @relation("PrimaryCompany")
+  additionalUsers  CompanyUser[]
+  catalogSections  CatalogSection[]
+  customers        Customer[]
+}
+
+model CompanyUser {
+  id        String  @id @default(cuid())
+  userId    String
+  companyId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+}
+
+// ─── CUSTOMERS ────────────────────────────────────────────────
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  plant     String?
+  address   String?
+  contact   String?
+  email     String?
+  phone     String?
+  keywords  String[] @default([])
+  notes     String?
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quotes Quote[]
+}
+
+// ─── CATALOG ──────────────────────────────────────────────────
+model CatalogSection {
+  id        String  @id @default(cuid())
+  companyId String
+  name      String
+  sortOrder Int     @default(0)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items     CatalogItem[]
+
+  @@unique([companyId, name])
+}
+
+model CatalogItem {
+  id            String  @id @default(cuid())
+  sectionId     String
+  name          String
+  fixedPrice    Float   @default(0)
+  variablePrice Float   @default(0)
+  materialCost  Float   @default(0)
+  laborHours    Float   @default(0)
+  description   String?
+  note          String?
+  hasQuantity   Boolean @default(false)
+  quantityLabel String?
+  options       Json?
+  subOptions    Json?
+  active        Boolean @default(true)
+  sortOrder     Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  section CatalogSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+}
+
+// ─── QUOTES ───────────────────────────────────────────────────
+model Quote {
+  id              String      @id @default(cuid())
+  quoteNumber     String      @unique
+  revision        Int         @default(1)
+  status          QuoteStatus @default(draft)
+  mode            String      @default("bundle")
+
+  customerId      String?
+  customer        Customer?   @relation(fields: [customerId], references: [id])
+  customerName    String?
+  contactName     String?
+  contactEmail    String?
+  plantName       String?
+  repName         String?
+  purpose         String?
+
+  selections      Json        @default("{}")
+  pricingSnapshot Json?
+  grandTotal      Float       @default(0)
+  companyKeys     String[]
+
+  createdById     String?
+  createdBy       User?       @relation("CreatedBy", fields: [createdById], references: [id])
+  submittedAt     DateTime?
+  submitNote      String?
+
+  reviewerId      String?
+  reviewedBy      User?       @relation("ReviewedBy", fields: [reviewerId], references: [id])
+  reviewedAt      DateTime?
+  reviewNote      String?
+  infoRequestNote String?
+  infoRequestedAt DateTime?
+
+  managerId       String?
+  approvedBy      User?       @relation("ApprovedBy", fields: [managerId], references: [id])
+  approvedAt      DateTime?
+  managerNote     String?
+
+  lockedPdfUrl    String?
+  expiresAt       DateTime?
+  terms           String?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  auditLogs AuditLog[]
+}
+
+// ─── AUDIT LOG ────────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(cuid())
+  quoteId   String?
+  quote     Quote?   @relation(fields: [quoteId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  details   Json?
+  createdAt DateTime @default(now())
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
