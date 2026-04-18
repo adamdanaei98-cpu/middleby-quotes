@@ -29,15 +29,6 @@ export async function POST(request) {
         gotoOptions: { waitUntil: 'networkidle0', timeout: 30000 },
       }),
     });
-        options: {
-          format: 'letter',
-          printBackground: true,
-          margin: { top: '12mm', bottom: '18mm', left: '15mm', right: '15mm' },
-        },
-        waitForSelector: '.pdf-doc',
-        gotoOptions: { waitUntil: 'networkidle0', timeout: 30000 },
-      }),
-    });
 
     if (!res.ok) {
       const errText = await res.text();

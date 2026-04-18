@@ -20,7 +20,6 @@ function MarginContent() {
     }
   }, [quoteId, loading, quoteLoaded]);
 
-  const [generating, setGenerating] = useState(false);
   const handleDownload = async () => {
     setGenerating(true);
     try {
