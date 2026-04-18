@@ -20,7 +20,19 @@ function MarginContent() {
     }
   }, [quoteId, loading, quoteLoaded]);
 
-  const handleDownload = () => { window.print(); };
+  const [generating, setGenerating] = useState(false);
+  const handleDownload = async () => {
+    setGenerating(true);
+    try {
+      const marginUrl = window.location.origin + '/margin' + (quoteId ? '?quoteId=' + quoteId : '');
+      const res = await fetch('/api/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: marginUrl }) });
+      if (!res.ok) { window.print(); setGenerating(false); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'Margin_' + (ci.proposalNumber||'Report') + '.pdf'; a.click(); URL.revokeObjectURL(url);
+    } catch { window.print(); }
+    setGenerating(false);
+  };
 
   if (loading || loadingQuote) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'calc(100vh - 56px)'}}><div style={{fontSize:16,color:C.muted}}>Loading{quoteId ? ' quote...' : '...'}</div></div>;
 
@@ -62,7 +74,7 @@ function MarginContent() {
   return (
     <div style={{padding:20,background:'#f0f2f5',minHeight:'calc(100vh - 56px)'}}>
       <div className="no-print" style={{textAlign:'center',marginBottom:16}}>
-        <button onClick={handleDownload} style={{padding:'8px 24px',borderRadius:8,border:'none',background:C.green,fontSize:13,fontWeight:600,color:'#fff',cursor:'pointer'}}>Download Margin Report</button>
+        <button onClick={handleDownload} disabled={generating} style={{padding:'8px 24px',borderRadius:8,border:'none',background:generating?'#888':C.green,fontSize:13,fontWeight:600,color:'#fff',cursor:generating?'default':'pointer'}}>{generating?'Generating...':'Download Margin Report'}</button>
         <div style={{fontSize:10,color:C.muted,marginTop:4}}>Use "Save as PDF" in the print dialog</div></div>
       <div id="margin-content" style={{maxWidth:1200,margin:'0 auto',background:'#fff',padding:20,borderRadius:12}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>

@@ -40,21 +40,26 @@ function PDFContent() {
 
   const [generating, setGenerating] = useState(false);
   const handleDownload = async () => {
-    const apiKey = typeof window !== 'undefined' && window.__ENV__?.BROWSERLESS_KEY;
-    if (!apiKey) { window.print(); return; } // fallback to browser print
     setGenerating(true);
     try {
-      const pdfUrl = window.location.href;
-      const res = await fetch('https://chrome.browserless.io/pdf?token=' + apiKey, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: pdfUrl, options: { format: 'letter', printBackground: true, margin: { top: '12mm', bottom: '18mm', left: '15mm', right: '15mm' } }, waitForSelector: '.pdf-doc' }),
+      const pdfUrl = window.location.origin + '/pdf' + (quoteId ? '?quoteId=' + quoteId : '');
+      const res = await fetch('/api/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: pdfUrl }),
       });
-      if (!res.ok) throw new Error('PDF generation failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (err.error === 'BROWSERLESS_KEY not configured') { window.print(); }
+        else { alert('PDF failed — using print fallback'); window.print(); }
+        setGenerating(false); return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = (ci.proposalNumber||'Proposal')+'_Rev'+(ci.revision||'1')+'.pdf'; a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) { console.error(e); window.print(); } // fallback
+      const a = document.createElement('a'); a.href = url;
+      a.download = (ci.proposalNumber || 'Proposal') + '_Rev' + (ci.revision || '1') + '.pdf';
+      a.click(); URL.revokeObjectURL(url);
+    } catch (e) { console.error(e); window.print(); }
     setGenerating(false);
   };
 

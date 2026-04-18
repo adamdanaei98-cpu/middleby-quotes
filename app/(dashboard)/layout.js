@@ -7,7 +7,6 @@ import NavBar from '@/components/NavBar';
 export default async function DashboardLayout({ children }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
-  const bKey = process.env.BROWSERLESS_KEY || '';
   return (
     <AuthProvider initialUser={user}>
       <QuoteProvider>
@@ -15,7 +14,6 @@ export default async function DashboardLayout({ children }) {
           <NavBar />
           {children}
         </div>
-        {bKey && <script dangerouslySetInnerHTML={{ __html: `window.__ENV__={BROWSERLESS_KEY:"${bKey}"}` }} />}
       </QuoteProvider>
     </AuthProvider>
   );
