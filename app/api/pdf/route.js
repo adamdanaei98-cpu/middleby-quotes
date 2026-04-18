@@ -14,12 +14,12 @@ export async function POST(request) {
     const authToken = cookieStore.get('auth-token')?.value;
     const cookieStr = authToken ? 'auth-token=' + authToken : '';
 
-    const res = await fetch('https://chrome.browserless.io/pdf?token=' + BKEY, {
+    const res = await fetch('https://production-sfo.browserless.io/pdf?token=' + BKEY, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
       body: JSON.stringify({
         url,
-        cookies: authToken ? [{ name: 'auth-token', value: authToken, domain: new URL(url).hostname, path: '/' }] : [],
+        setCookies: authToken ? [{ name: 'auth-token', value: authToken, domain: new URL(url).hostname, path: '/' }] : [],
         options: {
           format: 'letter',
           printBackground: true,
