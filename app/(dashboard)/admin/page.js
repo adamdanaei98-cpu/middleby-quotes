@@ -147,6 +147,10 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState('');
   const [custSort, setCustSort] = useState({ k: 'name', d: 'asc' });
   const [userSort, setUserSort] = useState({ k: 'name', d: 'asc' });
+  const [custColFilter, setCustColFilter] = useState(null); // which col dropdown is open
+  const [custColVals, setCustColVals] = useState({}); // {colKey: Set of selected values}
+  const [userColFilter, setUserColFilter] = useState(null);
+  const [userColVals, setUserColVals] = useState({});
 
   useEffect(() => {
     if (!canAdmin) { router.push('/builder'); return; }
@@ -362,14 +366,20 @@ export default function AdminPage() {
           return dco && c.companyId === dco.id;
         });
         if (custSearch) { const s=custSearch.toLowerCase(); filtered=filtered.filter(c=>(c.name||'').toLowerCase().includes(s)||(c.contact||'').toLowerCase().includes(s)||(c.email||'').toLowerCase().includes(s)||(c.plant||'').toLowerCase().includes(s)); }
+        // Column filters
+        Object.entries(custColVals).forEach(([col,vals])=>{if(vals&&vals.size>0)filtered=filtered.filter(c=>{let v='';if(col==='name')v=c.name||'';else if(col==='plant')v=c.plant||'\u2014';else if(col==='contact')v=c.contact||'\u2014';return vals.has(v);});});
         filtered.sort((a,b)=>{ const av=(a[custSort.k]||'').toString().toLowerCase(); const bv=(b[custSort.k]||'').toString().toLowerCase(); return custSort.d==='asc'?av.localeCompare(bv):bv.localeCompare(av); });
         const allChecked = filtered.length>0 && filtered.every(c=>checkedCust.has(c.id));
         const checkedList = filtered.filter(c=>checkedCust.has(c.id));
+        const getCustUniqueVals=(col)=>{const vals=new Set();customers.forEach(c=>{let v='';if(col==='name')v=c.name||'';else if(col==='plant')v=c.plant||'\u2014';else if(col==='contact')v=c.contact||'\u2014';if(v)vals.add(v);});return [...vals].sort();};
+        const toggleCustColFilter=(col,val)=>{setCustColVals(p=>{const n={...p};const s=new Set(n[col]||[]);if(s.has(val))s.delete(val);else s.add(val);if(s.size===0)delete n[col];else n[col]=s;return n;});};
+        const custCols=[{k:'name',l:'Name',filterable:true},{k:'plant',l:'Plant',filterable:true},{k:'contact',l:'Contact',filterable:true},{k:'email',l:'Email'},{k:'phone',l:'Phone'},{k:'keywords',l:'Keywords'}];
         return <div>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <h2 style={{fontSize:18,fontWeight:800,color:'#003250',margin:0}}>Customers</h2>
-              <span style={{fontSize:10,color:C.muted}}>{filtered.length} total</span></div>
+              <span style={{fontSize:10,color:C.muted}}>{filtered.length} total</span>
+              {Object.keys(custColVals).length>0&&<button onClick={()=>setCustColVals({})} style={{padding:'3px 8px',borderRadius:4,border:'1px solid #fecaca',background:'#fef2f2',color:'#dc2626',fontSize:9,cursor:'pointer'}}>Clear filters</button>}</div>
             <div style={{display:'flex',gap:6,alignItems:'center'}}>
               <input value={custSearch} onChange={e=>setCustSearch(e.target.value)} placeholder="Search..." style={{padding:'5px 10px',borderRadius:6,border:'1px solid #e2e4e9',fontSize:11,width:150}}/>
               {canEditCo(co)&&<><button onClick={()=>{setModalData({name:'',plant:'',address:'',contact:'',email:'',phone:'',keywords:[],notes:'',companyId:co!=='__corporate'?cd?.id||'':''});setShowModal('addCust');}} style={{padding:'6px 14px',background:'#003250',color:'#fff',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer'}}>+ Add</button><button onClick={()=>setShowImport('customers')} style={{padding:'6px 10px',background:'#fff',color:'#003250',border:'1px solid #003250',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Import</button></>}
@@ -379,8 +389,17 @@ export default function AdminPage() {
             {filtered.length===0?<div style={{padding:30,textAlign:'center',color:'#8b919e'}}>No customers</div>
             :<table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}><thead><tr style={{background:'#f8f9fb'}}>
               {canEditCo(co)&&<th style={{padding:'6px 10px',width:30}}><input type="checkbox" checked={allChecked} onChange={()=>{if(allChecked)setCheckedCust(new Set());else setCheckedCust(new Set(filtered.map(c=>c.id)));}} style={{cursor:'pointer'}}/></th>}
-              {[{k:'name',l:'Name'},{k:'plant',l:'Plant'},{k:'contact',l:'Contact'},{k:'email',l:'Email'},{k:'phone',l:'Phone'},{k:'keywords',l:'Keywords'}].map(h=>(
-                <th key={h.k} onClick={()=>setCustSort(p=>({k:h.k,d:p.k===h.k&&p.d==='asc'?'desc':'asc'}))} style={{padding:'6px 12px',textAlign:'left',fontSize:9,fontWeight:700,color:'#8b919e',borderBottom:'1px solid #e2e4e9',cursor:'pointer',userSelect:'none'}}>{h.l} {custSort.k===h.k?(custSort.d==='asc'?'\u2191':'\u2193'):''}</th>))}
+              {custCols.map(h=>(
+                <th key={h.k} style={{padding:'6px 12px',textAlign:'left',fontSize:9,fontWeight:700,color:'#8b919e',borderBottom:'1px solid #e2e4e9',cursor:'pointer',userSelect:'none',position:'relative'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:2}}>
+                    <span onClick={()=>setCustSort(p=>({k:h.k,d:p.k===h.k&&p.d==='asc'?'desc':'asc'}))}>{h.l} {custSort.k===h.k?(custSort.d==='asc'?'\u2191':'\u2193'):''}</span>
+                    {h.filterable&&<button onClick={e=>{e.stopPropagation();setCustColFilter(custColFilter===h.k?null:h.k);}} style={{border:'none',background:'none',cursor:'pointer',fontSize:9,color:custColVals[h.k]?'#2563eb':'#ccc',padding:'0 2px'}}>{'\u25BC'}</button>}
+                  </div>
+                  {custColFilter===h.k&&<div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'100%',left:0,zIndex:50,background:'#fff',border:'1px solid #e2e4e9',borderRadius:8,boxShadow:'0 4px 12px rgba(0,0,0,.1)',padding:8,minWidth:140,maxHeight:200,overflowY:'auto'}}>
+                    {getCustUniqueVals(h.k).map(v=>(<label key={v} style={{display:'flex',alignItems:'center',gap:6,padding:'3px 0',fontSize:10,cursor:'pointer'}}><input type="checkbox" checked={custColVals[h.k]?.has(v)||false} onChange={()=>toggleCustColFilter(h.k,v)}/>{v}</label>))}
+                    <div style={{borderTop:'1px solid #eee',marginTop:4,paddingTop:4}}><button onClick={()=>{setCustColVals(p=>{const n={...p};delete n[h.k];return n;});setCustColFilter(null);}} style={{fontSize:9,color:'#dc2626',border:'none',background:'none',cursor:'pointer'}}>Clear</button></div>
+                  </div>}
+                </th>))}
             </tr></thead><tbody>{filtered.map(c=>{const ck=checkedCust.has(c.id);return(
               <tr key={c.id} style={{borderBottom:'1px solid #f3f4f6',background:ck?'#f0f7ff':'transparent',cursor:canEditCo(co)?'pointer':'default'}} onMouseOver={e=>{if(!ck)e.currentTarget.style.background='#fafbfc';}} onMouseOut={e=>{if(!ck)e.currentTarget.style.background=ck?'#f0f7ff':'transparent';}}>
                 {canEditCo(co)&&<td style={{padding:'6px 10px'}} onClick={e=>e.stopPropagation()}><input type="checkbox" checked={ck} onChange={()=>{setCheckedCust(p=>{const n=new Set(p);if(n.has(c.id))n.delete(c.id);else n.add(c.id);return n;});}} style={{cursor:'pointer'}}/></td>}
@@ -392,14 +411,12 @@ export default function AdminPage() {
                 <td style={{padding:'6px 12px'}}>{(c.keywords||[]).map(k=><span key={k} style={{fontSize:8,background:'#e0e7ff',color:'#3b5998',padding:'1px 5px',borderRadius:4,marginRight:2}}>{k}</span>)}</td>
               </tr>);})}</tbody></table>}
           </div>
-          {/* Bulk action bar */}
           {checkedList.length>0&&<div style={{position:'fixed',bottom:0,left:0,right:0,background:'#003250',color:'#fff',padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:100,boxShadow:'0 -4px 20px rgba(0,0,0,.2)'}}>
             <div style={{display:'flex',alignItems:'center',gap:12}}>
               <span style={{fontSize:12,fontWeight:700}}>{checkedList.length} customer{checkedList.length>1?'s':''} selected</span>
               <button onClick={()=>setCheckedCust(new Set())} style={{padding:'3px 8px',borderRadius:4,border:'1px solid rgba(255,255,255,.3)',background:'transparent',color:'#fff',fontSize:10,cursor:'pointer'}}>Clear</button></div>
-            <div style={{display:'flex',gap:8}}>
-              <button onClick={async()=>{if(!confirm('Delete '+checkedList.length+' customer(s)?'))return;for(const c of checkedList){try{await fetch('/api/customers?id='+c.id,{method:'DELETE'});}catch{}}setCustomers(p=>p.filter(c=>!checkedCust.has(c.id)));setCheckedCust(new Set());setOk('Customers deleted');setTimeout(()=>setOk(''),3000);}} style={{padding:'6px 16px',borderRadius:6,border:'none',background:'#dc2626',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>Delete Selected</button>
-            </div></div>}
+            <button onClick={async()=>{if(!confirm('Delete '+checkedList.length+' customer(s)?'))return;for(const c of checkedList){try{await fetch('/api/customers?id='+c.id,{method:'DELETE'});}catch{}}setCustomers(p=>p.filter(c=>!checkedCust.has(c.id)));setCheckedCust(new Set());setOk('Customers deleted');setTimeout(()=>setOk(''),3000);}} style={{padding:'6px 16px',borderRadius:6,border:'none',background:'#dc2626',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>Delete Selected</button>
+          </div>}
         </div>;
       })()}
 
@@ -407,25 +424,39 @@ export default function AdminPage() {
       {tab==='users'&&(()=>{
         let filtered = co==='__corporate' ? users.filter(u=>!u.primaryCompanyId) : users.filter(u=>{const dco=dbCos.find(c=>companies[co]?.id===c.id);return dco&&u.primaryCompanyId===dco.id;});
         if (userSearch) { const s=userSearch.toLowerCase(); filtered=filtered.filter(u=>(u.name||'').toLowerCase().includes(s)||(u.email||'').toLowerCase().includes(s)); }
+        Object.entries(userColVals).forEach(([col,vals])=>{if(vals&&vals.size>0)filtered=filtered.filter(u=>{let v='';if(col==='role')v=RO.find(r=>r.v===u.role)?.l||'';else if(col==='active')v=u.active?'Active':'Inactive';return vals.has(v);});});
         filtered.sort((a,b)=>{ const av=(a[userSort.k]||'').toString().toLowerCase(); const bv=(b[userSort.k]||'').toString().toLowerCase(); return userSort.d==='asc'?av.localeCompare(bv):bv.localeCompare(av); });
         const allChecked = filtered.length>0 && filtered.every(u=>checkedUsers.has(u.id));
         const checkedList = filtered.filter(u=>checkedUsers.has(u.id));
         const canManage = isCorporate||(userCoKey&&co===userCoKey);
+        const getUserUniqueVals=(col)=>{const vals=new Set();users.forEach(u=>{let v='';if(col==='role')v=RO.find(r=>r.v===u.role)?.l||'';else if(col==='active')v=u.active?'Active':'Inactive';if(v)vals.add(v);});return [...vals].sort();};
+        const toggleUserColFilter=(col,val)=>{setUserColVals(p=>{const n={...p};const s=new Set(n[col]||[]);if(s.has(val))s.delete(val);else s.add(val);if(s.size===0)delete n[col];else n[col]=s;return n;});};
+        const userCols=[{k:'name',l:'Name'},{k:'email',l:'Email'},{k:'role',l:'Role',filterable:true},{k:'isAdmin',l:'Admin'},{k:'active',l:'Status',filterable:true}];
         return <div>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <h2 style={{fontSize:18,fontWeight:800,color:'#003250',margin:0}}>Users {co==='__corporate'?'— Corporate':cd?.name?'— '+cd.name:''}</h2>
-              <span style={{fontSize:10,color:C.muted}}>{filtered.length} total</span></div>
+              <span style={{fontSize:10,color:C.muted}}>{filtered.length} total</span>
+              {Object.keys(userColVals).length>0&&<button onClick={()=>setUserColVals({})} style={{padding:'3px 8px',borderRadius:4,border:'1px solid #fecaca',background:'#fef2f2',color:'#dc2626',fontSize:9,cursor:'pointer'}}>Clear filters</button>}</div>
             <div style={{display:'flex',gap:6,alignItems:'center'}}>
               <input value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="Search..." style={{padding:'5px 10px',borderRadius:6,border:'1px solid #e2e4e9',fontSize:11,width:150}}/>
               {canManage&&<><button onClick={()=>{setModalData({name:'',email:'',password:'',role:'salesperson',isAdmin:false,primaryCompanyId:co==='__corporate'?'':cd?.id||''});setShowModal('addUser');}} style={{padding:'6px 14px',background:'#003250',color:'#fff',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer'}}>+ Add</button><button onClick={()=>setShowImport('users')} style={{padding:'6px 10px',background:'#fff',color:'#003250',border:'1px solid #003250',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Import</button></>}
             </div></div>
-          {filtered.length===0?<div style={{padding:30,textAlign:'center',color:C.muted,fontSize:12,background:'#fff',borderRadius:10,border:'1px dashed '+C.border}}>No users in this {co==='__corporate'?'level':'company'}.</div>
-          :<div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e4e9',overflow:'visible'}}>
+          {filtered.length===0?<div style={{padding:30,textAlign:'center',color:C.muted,fontSize:12,background:'#fff',borderRadius:10,border:'1px dashed '+C.border}}>No users.</div>
+          :<div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e4e9',overflow:'visible',position:'relative'}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}><thead><tr style={{background:'#f8f9fb'}}>
               {canManage&&<th style={{padding:'6px 10px',width:30}}><input type="checkbox" checked={allChecked} onChange={()=>{if(allChecked)setCheckedUsers(new Set());else setCheckedUsers(new Set(filtered.map(u=>u.id)));}} style={{cursor:'pointer'}}/></th>}
-              {[{k:'name',l:'Name'},{k:'email',l:'Email'},{k:'role',l:'Role'},{k:'isAdmin',l:'Admin'},{k:'active',l:'Status'}].map(h=>(
-                <th key={h.k} onClick={()=>setUserSort(p=>({k:h.k,d:p.k===h.k&&p.d==='asc'?'desc':'asc'}))} style={{padding:'6px 12px',textAlign:'left',fontSize:9,fontWeight:700,color:'#8b919e',borderBottom:'1px solid #e2e4e9',cursor:'pointer',userSelect:'none'}}>{h.l} {userSort.k===h.k?(userSort.d==='asc'?'\u2191':'\u2193'):''}</th>))}
+              {userCols.map(h=>(
+                <th key={h.k} style={{padding:'6px 12px',textAlign:'left',fontSize:9,fontWeight:700,color:'#8b919e',borderBottom:'1px solid #e2e4e9',cursor:'pointer',userSelect:'none',position:'relative'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:2}}>
+                    <span onClick={()=>setUserSort(p=>({k:h.k,d:p.k===h.k&&p.d==='asc'?'desc':'asc'}))}>{h.l} {userSort.k===h.k?(userSort.d==='asc'?'\u2191':'\u2193'):''}</span>
+                    {h.filterable&&<button onClick={e=>{e.stopPropagation();setUserColFilter(userColFilter===h.k?null:h.k);}} style={{border:'none',background:'none',cursor:'pointer',fontSize:9,color:userColVals[h.k]?'#2563eb':'#ccc',padding:'0 2px'}}>{'\u25BC'}</button>}
+                  </div>
+                  {userColFilter===h.k&&<div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'100%',left:0,zIndex:50,background:'#fff',border:'1px solid #e2e4e9',borderRadius:8,boxShadow:'0 4px 12px rgba(0,0,0,.1)',padding:8,minWidth:120,maxHeight:200,overflowY:'auto'}}>
+                    {getUserUniqueVals(h.k).map(v=>(<label key={v} style={{display:'flex',alignItems:'center',gap:6,padding:'3px 0',fontSize:10,cursor:'pointer'}}><input type="checkbox" checked={userColVals[h.k]?.has(v)||false} onChange={()=>toggleUserColFilter(h.k,v)}/>{v}</label>))}
+                    <div style={{borderTop:'1px solid #eee',marginTop:4,paddingTop:4}}><button onClick={()=>{setUserColVals(p=>{const n={...p};delete n[h.k];return n;});setUserColFilter(null);}} style={{fontSize:9,color:'#dc2626',border:'none',background:'none',cursor:'pointer'}}>Clear</button></div>
+                  </div>}
+                </th>))}
             </tr></thead><tbody>{filtered.map(u=>{const editable=canEditUser(u);const ck=checkedUsers.has(u.id);return(
               <tr key={u.id} style={{borderBottom:'1px solid #f3f4f6',background:ck?'#f0f7ff':'transparent',cursor:editable?'pointer':'default'}} onMouseOver={e=>{if(!ck)e.currentTarget.style.background='#fafbfc';}} onMouseOut={e=>{if(!ck)e.currentTarget.style.background=ck?'#f0f7ff':'transparent';}}>
                 {canManage&&<td style={{padding:'6px 10px'}} onClick={e=>e.stopPropagation()}><input type="checkbox" checked={ck} onChange={()=>{setCheckedUsers(p=>{const n=new Set(p);if(n.has(u.id))n.delete(u.id);else n.add(u.id);return n;});}} style={{cursor:'pointer'}}/></td>}
@@ -435,7 +466,6 @@ export default function AdminPage() {
                 <td style={{padding:'6px 12px'}}>{u.isAdmin&&<span style={{fontSize:10,fontWeight:600,color:'#E12C3E',background:'#fef2f2',padding:'2px 8px',borderRadius:10}}>Admin</span>}</td>
                 <td style={{padding:'6px 12px'}}><span style={{fontSize:10,fontWeight:600,color:u.active?'#16a34a':'#dc2626'}}>{u.active?'Active':'Inactive'}</span></td>
               </tr>);})}</tbody></table></div>}
-          {/* Bulk action bar */}
           {checkedList.length>0&&<div style={{position:'fixed',bottom:0,left:0,right:0,background:'#003250',color:'#fff',padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:100,boxShadow:'0 -4px 20px rgba(0,0,0,.2)'}}>
             <div style={{display:'flex',alignItems:'center',gap:12}}>
               <span style={{fontSize:12,fontWeight:700}}>{checkedList.length} user{checkedList.length>1?'s':''} selected</span>

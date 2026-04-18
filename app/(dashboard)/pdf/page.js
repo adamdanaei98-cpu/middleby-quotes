@@ -40,27 +40,22 @@ function PDFContent() {
 
   const [generating, setGenerating] = useState(false);
   const handleDownload = async () => {
+    // Try server PDF first, fall back to browser print
     setGenerating(true);
     try {
       const pdfUrl = window.location.origin + '/pdf' + (quoteId ? '?quoteId=' + quoteId : '');
-      const res = await fetch('/api/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: pdfUrl }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        if (err.error === 'BROWSERLESS_KEY not configured') { window.print(); }
-        else { alert('PDF failed — using print fallback'); window.print(); }
+      const res = await fetch('/api/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: pdfUrl }) });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url;
+        a.download = (ci.proposalNumber || 'Proposal') + '_Rev' + (ci.revision || '1') + '.pdf';
+        a.click(); URL.revokeObjectURL(url);
         setGenerating(false); return;
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url;
-      a.download = (ci.proposalNumber || 'Proposal') + '_Rev' + (ci.revision || '1') + '.pdf';
-      a.click(); URL.revokeObjectURL(url);
-    } catch (e) { console.error(e); window.print(); }
+    } catch {}
     setGenerating(false);
+    window.print(); // fallback
   };
 
   if (activeCos.length === 0) return (

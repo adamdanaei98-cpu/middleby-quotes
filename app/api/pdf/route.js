@@ -2,37 +2,29 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export async function POST(request) {
-  const BKEY = process.env.BROWSERLESS_KEY;
-  if (!BKEY) return NextResponse.json({ error: 'BROWSERLESS_KEY not configured' }, { status: 500 });
+  // PDF_SERVER_URL = your Railway Puppeteer service URL
+  const SERVER = process.env.PDF_SERVER_URL;
+  if (!SERVER) return NextResponse.json({ error: 'PDF_SERVER_URL not configured' }, { status: 500 });
 
   try {
     const { url } = await request.json();
     if (!url) return NextResponse.json({ error: 'Missing url' }, { status: 400 });
 
-    // Get the auth cookie to pass to Browserless
     const cookieStore = await cookies();
-    const authToken = cookieStore.get('auth-token')?.value;
-    const cookieStr = authToken ? 'auth-token=' + authToken : '';
+    const authToken = cookieStore.get('auth-token')?.value || '';
 
-    const res = await fetch('https://production-sfo.browserless.io/pdf?token=' + BKEY, {
+    const res = await fetch(SERVER + '/generate-pdf', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         url,
-        setCookies: authToken ? [{ name: 'auth-token', value: authToken, domain: new URL(url).hostname, path: '/' }] : [],
-        options: {
-          format: 'letter',
-          printBackground: true,
-          margin: { top: '12mm', bottom: '18mm', left: '15mm', right: '15mm' },
-        },
-        waitForSelector: '.pdf-doc',
-        gotoOptions: { waitUntil: 'networkidle0', timeout: 30000 },
+        cookie: 'auth-token=' + authToken,
       }),
     });
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error('Browserless error:', errText);
+      console.error('PDF server error:', errText);
       return NextResponse.json({ error: 'PDF generation failed' }, { status: 502 });
     }
 
