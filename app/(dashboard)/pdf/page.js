@@ -23,9 +23,8 @@ function PDFContent() {
   const handleDownload = async () => {
     setGenerating(true);
     try {
-      const { generateProposalPDF } = await import('@/lib/pdfgen');
-      const doc = generateProposalPDF({ cats, sels, companies, ci, mode, terms, cTot, gP, itemDN });
-      doc.save(`${ci.proposalNumber || 'Proposal'}_Rev${ci.revision || 1}.pdf`);
+      const { capturePageAsPDF } = await import('@/lib/pdfgen');
+      await capturePageAsPDF('pdf-content', `${ci.proposalNumber || 'Proposal'}_Rev${ci.revision || 1}.pdf`);
     } catch (e) { console.error('PDF generation failed:', e); alert('PDF generation failed: ' + e.message); }
     setGenerating(false);
   };
@@ -44,7 +43,7 @@ function PDFContent() {
         <button onClick={handleDownload} disabled={generating} style={{padding:'8px 24px',borderRadius:8,border:'none',background:generating?'#888':C.green,fontSize:13,fontWeight:600,color:'#fff',cursor:generating?'default':'pointer'}}>{generating?'Generating PDF...':'Download PDF'}</button></div>
 
       {/* Single continuous document */}
-      <div className="pdf-doc" style={ps}>
+      <div id="pdf-content" className="pdf-doc" style={ps}>
         {stripe}
         <div style={{padding:'24px 40px'}}>
           {/* Header */}

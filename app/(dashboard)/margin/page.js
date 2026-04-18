@@ -23,9 +23,8 @@ function MarginContent() {
   const handleDownload = async () => {
     setGenerating(true);
     try {
-      const { generateMarginPDF } = await import('@/lib/pdfgen');
-      const doc = generateMarginPDF({ cats, sels, companies, ci, gP, itemDN, cTot });
-      doc.save(`Margin_${ci.proposalNumber || 'Report'}_Rev${ci.revision || 1}.pdf`);
+      const { capturePageAsPDF } = await import('@/lib/pdfgen');
+      await capturePageAsPDF('margin-content', `Margin_${ci.proposalNumber || 'Report'}_Rev${ci.revision || 1}.pdf`);
     } catch (e) { console.error('Margin PDF failed:', e); alert('PDF generation failed: ' + e.message); }
     setGenerating(false);
   };
@@ -71,7 +70,7 @@ function MarginContent() {
     <div style={{padding:20,background:'#f0f2f5',minHeight:'calc(100vh - 56px)'}}>
       <div className="no-print" style={{textAlign:'center',marginBottom:16}}>
         <button onClick={handleDownload} disabled={generating} style={{padding:'8px 24px',borderRadius:8,border:'none',background:generating?'#888':C.green,fontSize:13,fontWeight:600,color:'#fff',cursor:generating?'default':'pointer'}}>{generating?'Generating PDF...':'Download Margin Report'}</button></div>
-      <div style={{maxWidth:1200,margin:'0 auto'}}>
+      <div id="margin-content" style={{maxWidth:1200,margin:'0 auto',background:'#fff',padding:20,borderRadius:12}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
           <div><div style={{fontSize:18,fontWeight:800,color:C.navy}}>Margin Calculator</div>
             <div style={{fontSize:11,color:C.muted,marginTop:2}}>{ci.name}{ci.name?' • ':''}Rev. {ci.revision}</div></div>

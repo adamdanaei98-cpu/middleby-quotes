@@ -182,10 +182,13 @@ export default function AdminPage() {
 
   // Debounced save helpers
   const st = {};
+  // Map local state field names to API field names
+  const apiFieldMap = { desc: 'description', machineImg: 'machineImage' };
   const updCo = (k, f, v) => {
     const n = {...companies}; n[k] = {...n[k], [f]: v}; setCompanies(n);
     const cid = n[k]?.id; if (!cid) return;
-    clearTimeout(st[k+f]); st[k+f] = setTimeout(async()=>{try{await fetch('/api/companies',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:cid,[f]:v})});}catch{}},800);
+    const apiField = apiFieldMap[f] || f; // translate field name for API
+    clearTimeout(st[k+f]); st[k+f] = setTimeout(async()=>{try{await fetch('/api/companies',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:cid,[apiField]:v})});}catch{}},800);
   };
   const updTerms = (v) => { setTerms(v); clearTimeout(st.t); st.t = setTimeout(async()=>{try{await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'terms',value:v})});}catch{}},1000); };
   const saveNavLogo = (dataUrl) => { setNavLogo(dataUrl); fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'navLogo',value:dataUrl})}).catch(()=>{}); };
