@@ -58,3 +58,15 @@ export async function PATCH(request) {
     return NextResponse.json({ customer });
   } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 }
+
+export async function DELETE(request) {
+  try {
+    const user = await getCurrentUser();
+    if (!canManageCustomers(user)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    await db.customer.update({ where: { id }, data: { active: false } });
+    return NextResponse.json({ success: true });
+  } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
+}

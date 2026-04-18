@@ -38,6 +38,26 @@ function PDFContent() {
     <span style={{fontSize:7,color:C.muted}}>{ci.proposalNumber||''}</span>
   </div>;
 
+  const [generating, setGenerating] = useState(false);
+  const handleDownload = async () => {
+    const apiKey = typeof window !== 'undefined' && window.__ENV__?.BROWSERLESS_KEY;
+    if (!apiKey) { window.print(); return; } // fallback to browser print
+    setGenerating(true);
+    try {
+      const pdfUrl = window.location.href;
+      const res = await fetch('https://chrome.browserless.io/pdf?token=' + apiKey, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: pdfUrl, options: { format: 'letter', printBackground: true, margin: { top: '12mm', bottom: '18mm', left: '15mm', right: '15mm' } }, waitForSelector: '.pdf-doc' }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = (ci.proposalNumber||'Proposal')+'_Rev'+(ci.revision||'1')+'.pdf'; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { console.error(e); window.print(); } // fallback
+    setGenerating(false);
+  };
+
   if (activeCos.length === 0) return (
     <div style={{padding:20,background:'#e5e7eb',minHeight:'calc(100vh - 56px)'}}>
       <div style={docStyle}><div style={{padding:40,textAlign:'center',color:C.muted}}>Select items in the Builder to generate a proposal.</div></div>
@@ -47,8 +67,7 @@ function PDFContent() {
   return (
     <div style={{padding:20,background:'#e5e7eb',minHeight:'calc(100vh - 56px)'}}>
       <div className="no-print" style={{textAlign:'center',marginBottom:16}}>
-        <button onClick={()=>window.print()} style={{padding:'8px 24px',borderRadius:8,border:'none',background:C.green,fontSize:13,fontWeight:600,color:'#fff',cursor:'pointer'}}>Download PDF</button>
-        <div style={{fontSize:10,color:C.muted,marginTop:4}}>Use "Save as PDF" in the print dialog</div>
+        <button onClick={handleDownload} disabled={generating} style={{padding:'8px 24px',borderRadius:8,border:'none',background:generating?'#888':C.green,fontSize:13,fontWeight:600,color:'#fff',cursor:generating?'default':'pointer'}}>{generating?'Generating PDF...':'Download PDF'}</button>
       </div>
 
       {/* ══════════════════════════════════════ */}

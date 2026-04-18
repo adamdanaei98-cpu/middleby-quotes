@@ -141,10 +141,20 @@ export default function AdminPage() {
   const [err, setErr] = useState('');const [ok, setOk] = useState('');
   const [saving, setSaving] = useState(false);
   const [showImport, setShowImport] = useState(null); // 'customers','catalog','users'
+  const [checkedCust, setCheckedCust] = useState(new Set());
+  const [checkedUsers, setCheckedUsers] = useState(new Set());
+  const [custSearch, setCustSearch] = useState('');
+  const [userSearch, setUserSearch] = useState('');
+  const [custSort, setCustSort] = useState({ k: 'name', d: 'asc' });
+  const [userSort, setUserSort] = useState({ k: 'name', d: 'asc' });
 
   useEffect(() => {
     if (!canAdmin) { router.push('/builder'); return; }
-    if (!co && Object.keys(companies).length > 0) setCo(Object.keys(companies)[0]);
+    if (!co && Object.keys(companies).length > 0) {
+      // Default to user's own company, not first in list
+      const myKey = Object.keys(companies).find(k => companies[k]?.id === user?.primaryCompanyId);
+      setCo(myKey || Object.keys(companies)[0]);
+    }
     async function load() {
       try {
         const [uR, cR] = await Promise.all([fetch('/api/users'), fetch('/api/catalog')]);
@@ -344,57 +354,98 @@ export default function AdminPage() {
           <button onClick={()=>updTerms('1. PRICING: All prices are in US Dollars and are valid for 30 days.\n\n2. PAYMENT TERMS: 30% deposit with order, balance net 30.\n\n3. DELIVERY: 16-20 weeks from order.\n\n4. WARRANTY: 12 months from startup or 15 months from shipment.\n\n5. INSTALLATION: Available at prevailing rates plus travel.\n\n6. TAXES: Prices do not include taxes.\n\n7. CANCELLATION: Subject to cancellation charges.\n\n8. FORCE MAJEURE: Not liable for delays beyond reasonable control.')} style={{padding:'6px 16px',borderRadius:6,border:'1px solid '+C.border,background:'transparent',color:C.muted,fontSize:11,cursor:'pointer'}}>Reset Default</button></div>}
       </div>}
 
-      {/* ═══ CUSTOMERS ═══ - row click to edit */}
-      {tab==='customers'&&<div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-          <h2 style={{fontSize:18,fontWeight:800,color:'#003250',margin:0}}>Customers</h2>
-          <div style={{display:'flex',gap:6}}>
-            {canEditCo(co)&&<><button onClick={()=>{setModalData({name:'',plant:'',address:'',contact:'',email:'',phone:'',keywords:[],notes:'',companyId:co!=='__corporate'?cd?.id||'':''});setShowModal('addCust');}} style={{padding:'8px 18px',background:'#003250',color:'#fff',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>+ Add Customer</button><button onClick={()=>setShowImport('customers')} style={{padding:'8px 14px',background:'#fff',color:'#003250',border:'1px solid #003250',borderRadius:8,fontSize:11,fontWeight:600,cursor:'pointer'}}>Import CSV</button></>}
-            {!canEditCo(co)&&<span style={{fontSize:9,fontWeight:700,color:'#8b919e',background:'#f3f4f6',padding:'6px 12px',borderRadius:6}}>View Only</span>}
-          </div></div>
-        {(()=>{
-          const filtered = customers.filter(c => {
-            if (co === '__corporate' || !co) return true;
-            const dco = dbCos.find(d => companies[co]?.id === d.id);
-            return dco && c.companyId === dco.id;
-          });
-          return <div style={{background:'#fff',borderRadius:12,border:'1px solid #e2e4e9',overflow:'hidden'}}>
-            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}><thead><tr style={{background:'#f8f9fb'}}>
-              {['Name','Plant','Contact','Email','Phone','Keywords','Company'].map(h=><th key={h} style={{padding:'8px 14px',textAlign:'left',fontSize:9,fontWeight:700,color:'#8b919e',borderBottom:'1px solid #e2e4e9'}}>{h}</th>)}
-            </tr></thead><tbody>{filtered.length===0?<tr><td colSpan={7} style={{padding:30,textAlign:'center',color:'#8b919e'}}>No customers</td></tr>:filtered.map(c=>(
-              <tr key={c.id} onClick={()=>{if(canEditCo(co)){setModalData({...c,keywords:c.keywords||[]});setShowModal('editCust');}}} style={{...rowHov,cursor:canEditCo(co)?'pointer':'default',opacity:canEditCo(co)?1:.8}} onMouseOver={e=>{if(canEditCo(co))e.currentTarget.style.background='#fafbfc';}} onMouseOut={e=>e.currentTarget.style.background='transparent'}>
-                <td style={{padding:'8px 14px',fontWeight:600,color:'#003250'}}>{c.name}</td>
-                <td style={{padding:'8px 14px',color:'#555'}}>{c.plant||'\u2014'}</td>
-                <td style={{padding:'8px 14px'}}>{c.contact||'\u2014'}</td>
-                <td style={{padding:'8px 14px',color:'#8b919e'}}>{c.email||'\u2014'}</td>
-                <td style={{padding:'8px 14px',color:'#8b919e'}}>{c.phone||'\u2014'}</td>
-                <td style={{padding:'8px 14px'}}>{(c.keywords||[]).map(k=><span key={k} style={{fontSize:9,background:'#e0e7ff',color:'#3b5998',padding:'1px 6px',borderRadius:4,marginRight:3}}>{k}</span>)}</td>
-                <td style={{padding:'8px 14px'}}>{c.company?<span style={{fontSize:10,fontWeight:600,color:c.company.color}}>{c.company.name}</span>:'\u2014'}</td>
-              </tr>))}</tbody></table></div>;
-        })()}
-      </div>}
+      {/* ═══ CUSTOMERS ═══ */}
+      {tab==='customers'&&(()=>{
+        let filtered = customers.filter(c => {
+          if (co === '__corporate' || !co) return true;
+          const dco = dbCos.find(d => companies[co]?.id === d.id);
+          return dco && c.companyId === dco.id;
+        });
+        if (custSearch) { const s=custSearch.toLowerCase(); filtered=filtered.filter(c=>(c.name||'').toLowerCase().includes(s)||(c.contact||'').toLowerCase().includes(s)||(c.email||'').toLowerCase().includes(s)||(c.plant||'').toLowerCase().includes(s)); }
+        filtered.sort((a,b)=>{ const av=(a[custSort.k]||'').toString().toLowerCase(); const bv=(b[custSort.k]||'').toString().toLowerCase(); return custSort.d==='asc'?av.localeCompare(bv):bv.localeCompare(av); });
+        const allChecked = filtered.length>0 && filtered.every(c=>checkedCust.has(c.id));
+        const checkedList = filtered.filter(c=>checkedCust.has(c.id));
+        return <div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <h2 style={{fontSize:18,fontWeight:800,color:'#003250',margin:0}}>Customers</h2>
+              <span style={{fontSize:10,color:C.muted}}>{filtered.length} total</span></div>
+            <div style={{display:'flex',gap:6,alignItems:'center'}}>
+              <input value={custSearch} onChange={e=>setCustSearch(e.target.value)} placeholder="Search..." style={{padding:'5px 10px',borderRadius:6,border:'1px solid #e2e4e9',fontSize:11,width:150}}/>
+              {canEditCo(co)&&<><button onClick={()=>{setModalData({name:'',plant:'',address:'',contact:'',email:'',phone:'',keywords:[],notes:'',companyId:co!=='__corporate'?cd?.id||'':''});setShowModal('addCust');}} style={{padding:'6px 14px',background:'#003250',color:'#fff',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer'}}>+ Add</button><button onClick={()=>setShowImport('customers')} style={{padding:'6px 10px',background:'#fff',color:'#003250',border:'1px solid #003250',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Import</button></>}
+              {!canEditCo(co)&&<span style={{fontSize:9,fontWeight:700,color:'#8b919e',background:'#f3f4f6',padding:'4px 10px',borderRadius:6}}>View Only</span>}
+            </div></div>
+          <div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e4e9',overflow:'visible',position:'relative'}}>
+            {filtered.length===0?<div style={{padding:30,textAlign:'center',color:'#8b919e'}}>No customers</div>
+            :<table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}><thead><tr style={{background:'#f8f9fb'}}>
+              {canEditCo(co)&&<th style={{padding:'6px 10px',width:30}}><input type="checkbox" checked={allChecked} onChange={()=>{if(allChecked)setCheckedCust(new Set());else setCheckedCust(new Set(filtered.map(c=>c.id)));}} style={{cursor:'pointer'}}/></th>}
+              {[{k:'name',l:'Name'},{k:'plant',l:'Plant'},{k:'contact',l:'Contact'},{k:'email',l:'Email'},{k:'phone',l:'Phone'},{k:'keywords',l:'Keywords'}].map(h=>(
+                <th key={h.k} onClick={()=>setCustSort(p=>({k:h.k,d:p.k===h.k&&p.d==='asc'?'desc':'asc'}))} style={{padding:'6px 12px',textAlign:'left',fontSize:9,fontWeight:700,color:'#8b919e',borderBottom:'1px solid #e2e4e9',cursor:'pointer',userSelect:'none'}}>{h.l} {custSort.k===h.k?(custSort.d==='asc'?'\u2191':'\u2193'):''}</th>))}
+            </tr></thead><tbody>{filtered.map(c=>{const ck=checkedCust.has(c.id);return(
+              <tr key={c.id} style={{borderBottom:'1px solid #f3f4f6',background:ck?'#f0f7ff':'transparent',cursor:canEditCo(co)?'pointer':'default'}} onMouseOver={e=>{if(!ck)e.currentTarget.style.background='#fafbfc';}} onMouseOut={e=>{if(!ck)e.currentTarget.style.background=ck?'#f0f7ff':'transparent';}}>
+                {canEditCo(co)&&<td style={{padding:'6px 10px'}} onClick={e=>e.stopPropagation()}><input type="checkbox" checked={ck} onChange={()=>{setCheckedCust(p=>{const n=new Set(p);if(n.has(c.id))n.delete(c.id);else n.add(c.id);return n;});}} style={{cursor:'pointer'}}/></td>}
+                <td onClick={()=>{if(canEditCo(co)){setModalData({...c,keywords:c.keywords||[]});setShowModal('editCust');}}} style={{padding:'6px 12px',fontWeight:600,color:'#003250'}}>{c.name}</td>
+                <td onClick={()=>{if(canEditCo(co)){setModalData({...c,keywords:c.keywords||[]});setShowModal('editCust');}}} style={{padding:'6px 12px',color:'#555'}}>{c.plant||'\u2014'}</td>
+                <td style={{padding:'6px 12px'}}>{c.contact||'\u2014'}</td>
+                <td style={{padding:'6px 12px',color:'#8b919e'}}>{c.email||'\u2014'}</td>
+                <td style={{padding:'6px 12px',color:'#8b919e'}}>{c.phone||'\u2014'}</td>
+                <td style={{padding:'6px 12px'}}>{(c.keywords||[]).map(k=><span key={k} style={{fontSize:8,background:'#e0e7ff',color:'#3b5998',padding:'1px 5px',borderRadius:4,marginRight:2}}>{k}</span>)}</td>
+              </tr>);})}</tbody></table>}
+          </div>
+          {/* Bulk action bar */}
+          {checkedList.length>0&&<div style={{position:'fixed',bottom:0,left:0,right:0,background:'#003250',color:'#fff',padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:100,boxShadow:'0 -4px 20px rgba(0,0,0,.2)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <span style={{fontSize:12,fontWeight:700}}>{checkedList.length} customer{checkedList.length>1?'s':''} selected</span>
+              <button onClick={()=>setCheckedCust(new Set())} style={{padding:'3px 8px',borderRadius:4,border:'1px solid rgba(255,255,255,.3)',background:'transparent',color:'#fff',fontSize:10,cursor:'pointer'}}>Clear</button></div>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={async()=>{if(!confirm('Delete '+checkedList.length+' customer(s)?'))return;for(const c of checkedList){try{await fetch('/api/customers?id='+c.id,{method:'DELETE'});}catch{}}setCustomers(p=>p.filter(c=>!checkedCust.has(c.id)));setCheckedCust(new Set());setOk('Customers deleted');setTimeout(()=>setOk(''),3000);}} style={{padding:'6px 16px',borderRadius:6,border:'none',background:'#dc2626',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>Delete Selected</button>
+            </div></div>}
+        </div>;
+      })()}
 
-      {/* ═══ USERS ═══ - grouped by company, row click to edit */}
-      {tab==='users'&&<div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-          <h2 style={{fontSize:18,fontWeight:800,color:'#003250',margin:0}}>Users {co==='__corporate'?'— Corporate':cd?.name?'— '+cd.name:''}</h2>
-          {(isCorporate||(userCoKey&&co===userCoKey))&&<div style={{display:'flex',gap:6}}><button onClick={()=>{setModalData({name:'',email:'',password:'',role:'salesperson',isAdmin:false,primaryCompanyId:co==='__corporate'?'':cd?.id||''});setShowModal('addUser');}} style={{padding:'8px 18px',background:'#003250',color:'#fff',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>+ Add User</button><button onClick={()=>setShowImport('users')} style={{padding:'8px 14px',background:'#fff',color:'#003250',border:'1px solid #003250',borderRadius:8,fontSize:11,fontWeight:600,cursor:'pointer'}}>Import CSV</button></div>}</div>
-        {(()=>{
-          const filtered = co==='__corporate' ? users.filter(u=>!u.primaryCompanyId) : users.filter(u=>{const dco=dbCos.find(c=>companies[co]?.id===c.id);return dco&&u.primaryCompanyId===dco.id;});
-          if(filtered.length===0)return <div style={{padding:40,textAlign:'center',color:C.muted,fontSize:12,background:'#fff',borderRadius:10,border:'1px dashed '+C.border}}>No users in this {co==='__corporate'?'level':'company'}.</div>;
-          return <div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e4e9',overflow:'hidden'}}>
+      {/* ═══ USERS ═══ */}
+      {tab==='users'&&(()=>{
+        let filtered = co==='__corporate' ? users.filter(u=>!u.primaryCompanyId) : users.filter(u=>{const dco=dbCos.find(c=>companies[co]?.id===c.id);return dco&&u.primaryCompanyId===dco.id;});
+        if (userSearch) { const s=userSearch.toLowerCase(); filtered=filtered.filter(u=>(u.name||'').toLowerCase().includes(s)||(u.email||'').toLowerCase().includes(s)); }
+        filtered.sort((a,b)=>{ const av=(a[userSort.k]||'').toString().toLowerCase(); const bv=(b[userSort.k]||'').toString().toLowerCase(); return userSort.d==='asc'?av.localeCompare(bv):bv.localeCompare(av); });
+        const allChecked = filtered.length>0 && filtered.every(u=>checkedUsers.has(u.id));
+        const checkedList = filtered.filter(u=>checkedUsers.has(u.id));
+        const canManage = isCorporate||(userCoKey&&co===userCoKey);
+        return <div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <h2 style={{fontSize:18,fontWeight:800,color:'#003250',margin:0}}>Users {co==='__corporate'?'— Corporate':cd?.name?'— '+cd.name:''}</h2>
+              <span style={{fontSize:10,color:C.muted}}>{filtered.length} total</span></div>
+            <div style={{display:'flex',gap:6,alignItems:'center'}}>
+              <input value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="Search..." style={{padding:'5px 10px',borderRadius:6,border:'1px solid #e2e4e9',fontSize:11,width:150}}/>
+              {canManage&&<><button onClick={()=>{setModalData({name:'',email:'',password:'',role:'salesperson',isAdmin:false,primaryCompanyId:co==='__corporate'?'':cd?.id||''});setShowModal('addUser');}} style={{padding:'6px 14px',background:'#003250',color:'#fff',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer'}}>+ Add</button><button onClick={()=>setShowImport('users')} style={{padding:'6px 10px',background:'#fff',color:'#003250',border:'1px solid #003250',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Import</button></>}
+            </div></div>
+          {filtered.length===0?<div style={{padding:30,textAlign:'center',color:C.muted,fontSize:12,background:'#fff',borderRadius:10,border:'1px dashed '+C.border}}>No users in this {co==='__corporate'?'level':'company'}.</div>
+          :<div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e4e9',overflow:'visible'}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}><thead><tr style={{background:'#f8f9fb'}}>
-              {['Name','Email','Role','Admin','Status'].map(h=><th key={h} style={{padding:'8px 14px',textAlign:'left',fontSize:9,fontWeight:700,color:'#8b919e',borderBottom:'1px solid #e2e4e9'}}>{h}</th>)}
-            </tr></thead><tbody>{filtered.map(u=>{const editable=canEditUser(u);return(
-              <tr key={u.id} onClick={()=>{if(editable){setModalData({...u,password:''});setShowModal('editUser');}}} style={{...rowHov,cursor:editable?'pointer':'default',opacity:editable?1:.7}} onMouseOver={e=>{if(editable)e.currentTarget.style.background='#fafbfc';}} onMouseOut={e=>e.currentTarget.style.background='transparent'}>
-                <td style={{padding:'8px 14px',fontWeight:600,color:'#003250'}}>{u.name}</td>
-                <td style={{padding:'8px 14px',color:'#555'}}>{u.email}</td>
-                <td style={{padding:'8px 14px'}}><span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:10,background:u.role==='supervisor'?'#dbeafe':u.role==='manager'?'#dcfce7':u.role==='reviewer'?'#fef9c3':'#f3f4f6',color:u.role==='supervisor'?'#2563eb':u.role==='manager'?'#16a34a':u.role==='reviewer'?'#a16207':'#6b7085'}}>{RO.find(r=>r.v===u.role)?.l}</span></td>
-                <td style={{padding:'8px 14px'}}>{u.isAdmin&&<span style={{fontSize:10,fontWeight:600,color:'#E12C3E',background:'#fef2f2',padding:'2px 8px',borderRadius:10}}>Admin</span>}</td>
-                <td style={{padding:'8px 14px'}}><span style={{fontSize:10,fontWeight:600,color:u.active?'#16a34a':'#dc2626'}}>{u.active?'Active':'Inactive'}</span></td>
-              </tr>);})}</tbody></table></div>;
-        })()}
-      </div>}
+              {canManage&&<th style={{padding:'6px 10px',width:30}}><input type="checkbox" checked={allChecked} onChange={()=>{if(allChecked)setCheckedUsers(new Set());else setCheckedUsers(new Set(filtered.map(u=>u.id)));}} style={{cursor:'pointer'}}/></th>}
+              {[{k:'name',l:'Name'},{k:'email',l:'Email'},{k:'role',l:'Role'},{k:'isAdmin',l:'Admin'},{k:'active',l:'Status'}].map(h=>(
+                <th key={h.k} onClick={()=>setUserSort(p=>({k:h.k,d:p.k===h.k&&p.d==='asc'?'desc':'asc'}))} style={{padding:'6px 12px',textAlign:'left',fontSize:9,fontWeight:700,color:'#8b919e',borderBottom:'1px solid #e2e4e9',cursor:'pointer',userSelect:'none'}}>{h.l} {userSort.k===h.k?(userSort.d==='asc'?'\u2191':'\u2193'):''}</th>))}
+            </tr></thead><tbody>{filtered.map(u=>{const editable=canEditUser(u);const ck=checkedUsers.has(u.id);return(
+              <tr key={u.id} style={{borderBottom:'1px solid #f3f4f6',background:ck?'#f0f7ff':'transparent',cursor:editable?'pointer':'default'}} onMouseOver={e=>{if(!ck)e.currentTarget.style.background='#fafbfc';}} onMouseOut={e=>{if(!ck)e.currentTarget.style.background=ck?'#f0f7ff':'transparent';}}>
+                {canManage&&<td style={{padding:'6px 10px'}} onClick={e=>e.stopPropagation()}><input type="checkbox" checked={ck} onChange={()=>{setCheckedUsers(p=>{const n=new Set(p);if(n.has(u.id))n.delete(u.id);else n.add(u.id);return n;});}} style={{cursor:'pointer'}}/></td>}
+                <td onClick={()=>{if(editable){setModalData({...u,password:''});setShowModal('editUser');}}} style={{padding:'6px 12px',fontWeight:600,color:'#003250'}}>{u.name}</td>
+                <td style={{padding:'6px 12px',color:'#555'}}>{u.email}</td>
+                <td style={{padding:'6px 12px'}}><span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:10,background:u.role==='supervisor'?'#dbeafe':u.role==='manager'?'#dcfce7':u.role==='reviewer'?'#fef9c3':'#f3f4f6',color:u.role==='supervisor'?'#2563eb':u.role==='manager'?'#16a34a':u.role==='reviewer'?'#a16207':'#6b7085'}}>{RO.find(r=>r.v===u.role)?.l}</span></td>
+                <td style={{padding:'6px 12px'}}>{u.isAdmin&&<span style={{fontSize:10,fontWeight:600,color:'#E12C3E',background:'#fef2f2',padding:'2px 8px',borderRadius:10}}>Admin</span>}</td>
+                <td style={{padding:'6px 12px'}}><span style={{fontSize:10,fontWeight:600,color:u.active?'#16a34a':'#dc2626'}}>{u.active?'Active':'Inactive'}</span></td>
+              </tr>);})}</tbody></table></div>}
+          {/* Bulk action bar */}
+          {checkedList.length>0&&<div style={{position:'fixed',bottom:0,left:0,right:0,background:'#003250',color:'#fff',padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:100,boxShadow:'0 -4px 20px rgba(0,0,0,.2)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <span style={{fontSize:12,fontWeight:700}}>{checkedList.length} user{checkedList.length>1?'s':''} selected</span>
+              <button onClick={()=>setCheckedUsers(new Set())} style={{padding:'3px 8px',borderRadius:4,border:'1px solid rgba(255,255,255,.3)',background:'transparent',color:'#fff',fontSize:10,cursor:'pointer'}}>Clear</button></div>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <div style={{fontSize:10,color:'rgba(255,255,255,.5)'}}>Roles: {[...new Set(checkedList.map(u=>RO.find(r=>r.v===u.role)?.l))].join(', ')}</div>
+              <button onClick={async()=>{if(!confirm('Deactivate '+checkedList.length+' user(s)?'))return;for(const u of checkedList){try{await fetch('/api/users?id='+u.id,{method:'DELETE'});}catch{}}setUsers(p=>p.filter(u=>!checkedUsers.has(u.id)));setCheckedUsers(new Set());setOk('Users deactivated');setTimeout(()=>setOk(''),3000);}} style={{padding:'6px 16px',borderRadius:6,border:'none',background:'#dc2626',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>Delete Selected</button>
+            </div></div>}
+        </div>;
+      })()}
 
       {/* ═══ UNIVERSAL MODAL ═══ */}
       {showModal&&<div className="modal-overlay" onClick={()=>setShowModal(null)}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:500}}>
