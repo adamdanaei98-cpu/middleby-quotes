@@ -11,6 +11,7 @@ function PDFContent() {
   const quoteId = searchParams.get('quoteId');
   const [quoteLoaded, setQuoteLoaded] = useState(false);
   const [loadingQuote, setLoadingQuote] = useState(!!quoteId);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (quoteId && !loading && !quoteLoaded) {
@@ -38,7 +39,6 @@ function PDFContent() {
     <span style={{fontSize:7,color:C.muted}}>{ci.proposalNumber||''}</span>
   </div>;
 
-  const [generating, setGenerating] = useState(false);
   const handleDownload = async () => {
     setGenerating(true);
     try {
