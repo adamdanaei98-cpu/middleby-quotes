@@ -21,14 +21,19 @@ function MarginContent() {
   }, [quoteId, loading, quoteLoaded]);
 
   const handleDownload = async () => {
+    if (!quoteId) { window.print(); return; }
     setGenerating(true);
     try {
-      const marginUrl = window.location.origin + '/margin' + (quoteId ? '?quoteId=' + quoteId : '');
-      const res = await fetch('/api/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: marginUrl }) });
-      if (!res.ok) { window.print(); setGenerating(false); return; }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'Margin_' + (ci.proposalNumber||'Report') + '.pdf'; a.click(); URL.revokeObjectURL(url);
+      const res = await fetch('/api/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: window.location.href }) });
+      if (res.ok) {
+        const blob = await res.blob();
+        if (blob.type === 'application/pdf') {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = 'Margin_' + (ci.proposalNumber||'Report') + '.pdf'; a.click(); URL.revokeObjectURL(url);
+          setGenerating(false); return;
+        }
+      }
+      window.print();
     } catch { window.print(); }
     setGenerating(false);
   };

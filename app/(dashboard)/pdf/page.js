@@ -40,9 +40,11 @@ function PDFContent() {
   </div>;
 
   const handleDownload = async () => {
+    // Server PDF only works for saved quotes (has quoteId)
+    if (!quoteId) { window.print(); return; }
     setGenerating(true);
     try {
-      const pdfUrl = window.location.origin + '/pdf' + (quoteId ? '?quoteId=' + quoteId : '');
+      const pdfUrl = window.location.href;
       const res = await fetch('/api/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: pdfUrl }) });
       if (res.ok) {
         const blob = await res.blob();
@@ -54,17 +56,12 @@ function PDFContent() {
           setGenerating(false); return;
         }
       }
-      // Show what went wrong
-      const err = await res.json().catch(() => ({ error: 'Unknown error (status ' + res.status + ')' }));
-      console.error('PDF server error:', err);
-      if (confirm('Server PDF failed: ' + (err.error || 'Unknown') + '\n\nUse browser print instead?')) {
-        window.print();
-      }
+      const err = await res.json().catch(() => ({ error: 'Status ' + res.status }));
+      console.error('PDF error:', err);
+      window.print();
     } catch (e) {
       console.error('PDF error:', e);
-      if (confirm('PDF connection failed.\n\nUse browser print instead?')) {
-        window.print();
-      }
+      window.print();
     }
     setGenerating(false);
   };
