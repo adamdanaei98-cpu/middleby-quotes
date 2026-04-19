@@ -39,32 +39,7 @@ function PDFContent() {
     <span style={{fontSize:7,color:C.muted}}>{ci.proposalNumber||''}</span>
   </div>;
 
-  const handleDownload = async () => {
-    // Server PDF only works for saved quotes (has quoteId)
-    if (!quoteId) { window.print(); return; }
-    setGenerating(true);
-    try {
-      const pdfUrl = window.location.href;
-      const res = await fetch('/api/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: pdfUrl }) });
-      if (res.ok) {
-        const blob = await res.blob();
-        if (blob.type === 'application/pdf') {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a'); a.href = url;
-          a.download = (ci.proposalNumber || 'Proposal') + '_Rev' + (ci.revision || '1') + '.pdf';
-          a.click(); URL.revokeObjectURL(url);
-          setGenerating(false); return;
-        }
-      }
-      const err = await res.json().catch(() => ({ error: 'Status ' + res.status }));
-      console.error('PDF error:', err);
-      window.print();
-    } catch (e) {
-      console.error('PDF error:', e);
-      window.print();
-    }
-    setGenerating(false);
-  };
+  const handleDownload = () => { window.print(); };
 
   if (activeCos.length === 0) return (
     <div style={{padding:20,background:'#e5e7eb',minHeight:'calc(100vh - 56px)'}}>
@@ -75,7 +50,8 @@ function PDFContent() {
   return (
     <div style={{padding:20,background:'#e5e7eb',minHeight:'calc(100vh - 56px)'}}>
       <div className="no-print" style={{textAlign:'center',marginBottom:16}}>
-        <button onClick={handleDownload} disabled={generating} style={{padding:'8px 24px',borderRadius:8,border:'none',background:generating?'#888':C.green,fontSize:13,fontWeight:600,color:'#fff',cursor:generating?'default':'pointer'}}>{generating?'Generating PDF...':'Download PDF'}</button>
+        <button onClick={handleDownload} style={{padding:'10px 28px',borderRadius:8,border:'none',background:C.navy,fontSize:13,fontWeight:700,color:'#fff',cursor:'pointer'}}>Save as PDF</button>
+        <div style={{fontSize:10,color:C.muted,marginTop:6}}>Select "Save as PDF" as destination in the print dialog</div>
       </div>
 
       {/* ══════════════════════════════════════ */}
