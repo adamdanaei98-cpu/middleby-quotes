@@ -40,22 +40,33 @@ function PDFContent() {
 
   const [generating, setGenerating] = useState(false);
   const handleDownload = async () => {
-    // Try server PDF first, fall back to browser print
     setGenerating(true);
     try {
       const pdfUrl = window.location.origin + '/pdf' + (quoteId ? '?quoteId=' + quoteId : '');
       const res = await fetch('/api/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: pdfUrl }) });
       if (res.ok) {
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url;
-        a.download = (ci.proposalNumber || 'Proposal') + '_Rev' + (ci.revision || '1') + '.pdf';
-        a.click(); URL.revokeObjectURL(url);
-        setGenerating(false); return;
+        if (blob.type === 'application/pdf') {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url;
+          a.download = (ci.proposalNumber || 'Proposal') + '_Rev' + (ci.revision || '1') + '.pdf';
+          a.click(); URL.revokeObjectURL(url);
+          setGenerating(false); return;
+        }
       }
-    } catch {}
+      // Show what went wrong
+      const err = await res.json().catch(() => ({ error: 'Unknown error (status ' + res.status + ')' }));
+      console.error('PDF server error:', err);
+      if (confirm('Server PDF failed: ' + (err.error || 'Unknown') + '\n\nUse browser print instead?')) {
+        window.print();
+      }
+    } catch (e) {
+      console.error('PDF error:', e);
+      if (confirm('PDF connection failed.\n\nUse browser print instead?')) {
+        window.print();
+      }
+    }
     setGenerating(false);
-    window.print(); // fallback
   };
 
   if (activeCos.length === 0) return (

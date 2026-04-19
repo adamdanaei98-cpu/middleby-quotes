@@ -11,14 +11,16 @@ export async function POST(request) {
     if (!url) return NextResponse.json({ error: 'Missing url' }, { status: 400 });
 
     const cookieStore = await cookies();
-    const authToken = cookieStore.get('auth-token')?.value || '';
+    const authToken = cookieStore.get('token')?.value || '';
+
+    console.log('PDF request - URL:', url, 'Has token:', !!authToken);
 
     const res = await fetch(SERVER + '/generate-pdf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         url,
-        cookie: 'auth-token=' + authToken,
+        cookie: 'token=' + authToken,
       }),
     });
 
