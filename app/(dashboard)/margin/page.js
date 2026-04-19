@@ -60,7 +60,7 @@ function MarginContent() {
   });
 
   return (
-    <div style={{padding:20,background:'#f0f2f5',minHeight:'calc(100vh - 56px)'}}>
+    <div className="pdf-outer" style={{padding:20,background:'#f0f2f5',minHeight:'calc(100vh - 56px)'}}>
       <div className="no-print" style={{textAlign:'center',marginBottom:16}}>
         <button onClick={handleDownload} style={{padding:'10px 28px',borderRadius:8,border:'none',background:C.navy,fontSize:13,fontWeight:700,color:'#fff',cursor:'pointer'}}>Save as PDF</button>
         <div style={{fontSize:10,color:C.muted,marginTop:6}}>Select "Save as PDF" as destination in the print dialog</div></div>
