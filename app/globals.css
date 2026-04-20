@@ -6,9 +6,9 @@ input,select,textarea,button{font-family:inherit}
 ::-webkit-scrollbar-thumb{background:#c0c0c0;border-radius:3px}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200}
 .modal{background:#fff;border-radius:14px;padding:24px;width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
-.page-letter{width:8.5in;min-height:11in;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.12);margin:0 auto 24px;padding:0;box-sizing:border-box;position:relative;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden;display:flex;flex-direction:column}
-.page-letter .page-content{flex:1;padding:0.5in 0.65in}
-.page-letter .page-stripe{flex-shrink:0}
+.page-letter{width:8.5in;height:11in;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.12);margin:0 auto 24px;padding:0;box-sizing:border-box;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;display:flex;flex-direction:column;overflow:visible}
+.page-letter .page-content{flex:1;padding:0.5in 0.65in;overflow:visible}
+.page-letter .page-stripe{flex-shrink:0;width:100%}
 .page-letter [contenteditable]:focus{outline:2px dashed #e0c000;outline-offset:2px;background:#fffde7;border-radius:2px}
 @media print{
   .no-print,nav,header{display:none!important}
