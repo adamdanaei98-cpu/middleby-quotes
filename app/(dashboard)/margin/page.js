@@ -81,7 +81,8 @@ function MarginContent() {
         {editing&&<span style={{fontSize:10,color:'#b8860b'}}>Edit material costs & list prices — margins recalculate live</span>}
       </div>
 
-      <div className="page-letter" style={{maxWidth:'11in',width:'11in',minHeight:'8.5in',padding:'0.4in 0.5in'}}>
+      <div className="page-letter" style={{maxWidth:'11in',width:'11in',minHeight:'8.5in'}}>
+        <div className="page-content" style={{padding:'0.4in 0.5in'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
           <div><div contentEditable={ce} suppressContentEditableWarning style={{fontSize:18,fontWeight:800,color:C.navy}}>Margin Calculator</div>
             <div style={{fontSize:11,color:C.muted,marginTop:2}}>{ci.name}{ci.name?' \u2022 ':''}Rev. {ci.revision}</div></div>
@@ -151,6 +152,7 @@ function MarginContent() {
           </div>
         </>}
       </div>
+    </div>
     </div>
   );
 }

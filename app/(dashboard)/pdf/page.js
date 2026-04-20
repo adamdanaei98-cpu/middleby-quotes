@@ -83,8 +83,8 @@ function PDFContent() {
 
       {/* ═══ COVER PAGE ═══ */}
       <div className="page-letter">
-        {stripe}
-        <div style={{marginTop:20}}>
+        <div className="page-stripe">{stripe}</div>
+        <div className="page-content">
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:24}}>
             {pdfLogo ? <img src={pdfLogo} style={{height:36,objectFit:'contain'}} /> : <span style={{fontSize:26,fontWeight:800,color:C.navy,fontStyle:'italic'}}>MIDDLEBY</span>}
             <span style={{fontSize:8,color:C.muted,letterSpacing:'.1em'}}>FOOD PROCESSING</span>
@@ -131,7 +131,7 @@ function PDFContent() {
             <span style={{fontSize:16,fontWeight:800,color:C.navy}}>{fP(gt)}</span>
           </div>
         </div>
-        <div style={{position:'absolute',bottom:0,left:0,right:0}}>{stripe}</div>
+        <div className="page-stripe">{stripe}</div>
       </div>
 
       {/* ═══ COMPANY PAGES ═══ */}
@@ -141,8 +141,8 @@ function PDFContent() {
         const ct = coTot(k);
         return (
           <div key={k} className="page-letter">
-            {stripe}
-            <div style={{marginTop:12}}>
+            <div className="page-stripe">{stripe}</div>
+            <div className="page-content">
               {hdr}
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                 <div style={{width:4,height:26,borderRadius:2,background:co.color}} />
@@ -187,15 +187,15 @@ function PDFContent() {
                 <span style={{fontSize:13,fontWeight:800,color:co.color}}>{fP(ct)}</span>
               </div>
             </div>
-            <div style={{position:'absolute',bottom:0,left:0,right:0}}>{stripe}</div>
+            <div className="page-stripe">{stripe}</div>
           </div>
         );
       })}
 
       {/* ═══ PRICE SUMMARY ═══ */}
       <div className="page-letter">
-        {stripe}
-        <div style={{marginTop:12}}>
+        <div className="page-stripe">{stripe}</div>
+        <div className="page-content">
           {hdr}
           <div style={{fontSize:20,fontWeight:800,color:C.navy,marginBottom:20}}>Price Summary</div>
           <div style={{maxWidth:420}}>
@@ -214,13 +214,13 @@ function PDFContent() {
             </div>
           </div>
         </div>
-        <div style={{position:'absolute',bottom:0,left:0,right:0}}>{stripe}</div>
+        <div className="page-stripe">{stripe}</div>
       </div>
 
       {/* ═══ TERMS ═══ */}
       {terms&&terms.trim()&&<div className="page-letter">
-        {stripe}
-        <div style={{marginTop:12}}>
+        <div className="page-stripe">{stripe}</div>
+        <div className="page-content">
           {hdr}
           <div style={{fontSize:18,fontWeight:800,color:C.navy,marginBottom:14}}>Terms & Conditions</div>
           <div contentEditable={ce} suppressContentEditableWarning style={{fontSize:9.5,lineHeight:1.8,color:'#444'}}>
@@ -231,7 +231,7 @@ function PDFContent() {
             })}
           </div>
         </div>
-        <div style={{position:'absolute',bottom:0,left:0,right:0}}>{stripe}</div>
+        <div className="page-stripe">{stripe}</div>
       </div>}
     </div>
   );
