@@ -15,6 +15,7 @@ export function QuoteProvider({ children }) {
   const [approval, setApproval] = useState({ status: 'draft', reviewer: null, submittedAt: null, note: '' });
   const [terms, setTerms] = useState('1. PRICING: All prices in US Dollars, valid 30 days.\n\n2. PAYMENT: 30% deposit, balance net 30 from shipment.\n\n3. DELIVERY: 16-20 weeks from order.\n\n4. WARRANTY: 12 months from startup or 15 months from shipment.');
   const [navLogo, setNavLogo] = useState(null);
+  const [pdfLogo, setPdfLogo] = useState(null);
   const [navColor, setNavColor] = useState('#002a3e');
   const [appName, setAppName] = useState('QUOTECRAFT');
 
@@ -26,7 +27,7 @@ export function QuoteProvider({ children }) {
         const custData = await custRes.json();
         const { cats: c, companies: co, initSels } = dbToPrototypeCatalog(catData.companies || []);
         setCats(c); setCompanies(co); setSels(initSels); setCustomers(custData.customers || []);
-        if (settingsRes.ok) { const sData = await settingsRes.json(); const s = sData.settings || {}; if (s.terms) setTerms(s.terms); if (s.navLogo) setNavLogo(s.navLogo); if (s.navColor) setNavColor(s.navColor); if (s.appName) setAppName(s.appName); }
+        if (settingsRes.ok) { const sData = await settingsRes.json(); const s = sData.settings || {}; if (s.terms) setTerms(s.terms); if (s.navLogo) setNavLogo(s.navLogo); if (s.pdfLogo) setPdfLogo(s.pdfLogo); if (s.navColor) setNavColor(s.navColor); if (s.appName) setAppName(s.appName); }
       } catch (e) { console.error('Load failed:', e); }
       setLoading(false);
     }
@@ -61,7 +62,7 @@ export function QuoteProvider({ children }) {
   };
 
   return (
-    <QuoteContext.Provider value={{ cats, setCats, sels, setSels, companies, setCompanies, customers, setCustomers, loading, mode, setMode, ci, setCi, approval, setApproval, terms, setTerms, navLogo, setNavLogo, navColor, setNavColor, appName, setAppName, tots, gt, loadQuote }}>
+    <QuoteContext.Provider value={{ cats, setCats, sels, setSels, companies, setCompanies, customers, setCustomers, loading, mode, setMode, ci, setCi, approval, setApproval, terms, setTerms, navLogo, setNavLogo, pdfLogo, setPdfLogo, navColor, setNavColor, appName, setAppName, tots, gt, loadQuote }}>
       {children}
     </QuoteContext.Provider>
   );

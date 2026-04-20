@@ -8,7 +8,7 @@ import { gP, cTot, itemDN, fP, C } from '@/lib/transform';
 
 function PDFContent() {
   const { user } = useAuth();
-  const { cats, sels, companies, ci, mode, terms, loading, loadQuote, navLogo } = useQuote();
+  const { cats, sels, companies, ci, mode, terms, loading, loadQuote, navLogo, pdfLogo } = useQuote();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
   const [quoteLoaded, setQuoteLoaded] = useState(false);
@@ -60,7 +60,7 @@ function PDFContent() {
   const hdr = (
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingBottom:8,borderBottom:'1px solid #eee',marginBottom:12}}>
       <div style={{display:'flex',alignItems:'center',gap:8}}>
-        {navLogo ? <img src={navLogo} style={{height:18,objectFit:'contain'}} /> : <span style={{fontSize:11,fontWeight:800,color:C.navy,fontStyle:'italic'}}>MIDDLEBY</span>}
+        {pdfLogo ? <img src={pdfLogo} style={{height:18,objectFit:'contain'}} /> : <span style={{fontSize:11,fontWeight:800,color:C.navy,fontStyle:'italic'}}>MIDDLEBY</span>}
         <span style={{fontSize:6.5,color:C.muted,letterSpacing:'.08em'}}>FOOD PROCESSING</span>
       </div>
       <span style={{fontSize:7.5,color:C.muted}}>{ci.proposalNumber||''}</span>
@@ -86,7 +86,7 @@ function PDFContent() {
         {stripe}
         <div style={{marginTop:20}}>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:24}}>
-            {navLogo ? <img src={navLogo} style={{height:36,objectFit:'contain'}} /> : <span style={{fontSize:26,fontWeight:800,color:C.navy,fontStyle:'italic'}}>MIDDLEBY</span>}
+            {pdfLogo ? <img src={pdfLogo} style={{height:36,objectFit:'contain'}} /> : <span style={{fontSize:26,fontWeight:800,color:C.navy,fontStyle:'italic'}}>MIDDLEBY</span>}
             <span style={{fontSize:8,color:C.muted,letterSpacing:'.1em'}}>FOOD PROCESSING</span>
           </div>
           <div contentEditable={ce} suppressContentEditableWarning style={{fontSize:26,fontWeight:800,color:C.navy,marginBottom:4}}>Equipment Proposal</div>

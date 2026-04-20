@@ -127,7 +127,7 @@ function EditItemModal({item,onClose,onSave,onDelete,color}){
 /* ═══ ADMIN PAGE ═══ */
 export default function AdminPage() {
   const { user, canAdmin } = useAuth();
-  const { cats, setCats, companies, setCompanies, customers, setCustomers, terms, setTerms, navLogo, setNavLogo, navColor, setNavColor, appName, setAppName, loading: qL } = useQuote();
+  const { cats, setCats, companies, setCompanies, customers, setCustomers, terms, setTerms, navLogo, setNavLogo, pdfLogo, setPdfLogo, navColor, setNavColor, appName, setAppName, loading: qL } = useQuote();
   const router = useRouter();
   const [co, setCo] = useState(null);
   const [tab, setTab] = useState('profiles');
@@ -206,6 +206,7 @@ export default function AdminPage() {
   };
   const updTerms = (v) => { setTerms(v); clearTimeout(st.t); st.t = setTimeout(async()=>{try{await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'terms',value:v})});}catch{}},1000); };
   const saveNavLogo = (dataUrl) => { setNavLogo(dataUrl); fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'navLogo',value:dataUrl})}).catch(()=>{}); };
+  const savePdfLogo = (dataUrl) => { setPdfLogo(dataUrl); fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'pdfLogo',value:dataUrl})}).catch(()=>{}); };
 
   // Catalog DB helpers
   const addItemDB = async (item, secName) => {
@@ -293,15 +294,29 @@ export default function AdminPage() {
           {/* Brand settings */}
           {isCorporate&&<div style={{background:'#fff',borderRadius:12,border:'2px solid '+C.navy,padding:20}}>
             <div style={{fontSize:14,fontWeight:700,color:C.navy,marginBottom:12}}>Brand Settings</div>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
-              <div style={{width:100,height:50,borderRadius:8,background:navColor||'#002a3e',display:'flex',alignItems:'center',justifyContent:'center',padding:6,flexShrink:0}}>
-                {navLogo?<img src={navLogo} style={{maxHeight:38,maxWidth:88,objectFit:'contain'}}/>:<span style={{color:'#fff',fontWeight:800,fontSize:13,fontStyle:'italic'}}>MIDDLEBY</span>}</div>
-              <div style={{fontSize:8,color:'rgba(255,255,255,.4)',background:navColor||'#002a3e',padding:'2px 8px',borderRadius:4,fontWeight:600}}>{appName||'QUOTECRAFT'}</div></div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
               <div><div style={lS}>NAV BAR COLOR</div><input type="color" value={navColor||'#002a3e'} onChange={e=>{setNavColor(e.target.value);fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'navColor',value:e.target.value})});}} style={{width:'100%',height:30,borderRadius:6,border:'1px solid '+C.border,cursor:'pointer',padding:0}}/></div>
               <div><div style={lS}>APP NAME</div><input value={appName||'QUOTECRAFT'} onChange={e=>{setAppName(e.target.value);clearTimeout(st.an);st.an=setTimeout(()=>fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'appName',value:e.target.value})}),800);}} style={iS}/></div></div>
-            <div style={{display:'flex',gap:8}}><button onClick={()=>pickFile('image/*',saveNavLogo)} style={{padding:'6px 14px',borderRadius:6,border:'1px solid '+C.navy,background:'transparent',color:C.navy,fontSize:11,fontWeight:600,cursor:'pointer'}}>Upload Logo</button>
-              {navLogo&&<button onClick={()=>saveNavLogo('')} style={{padding:'6px 14px',borderRadius:6,border:'1px solid #fecaca',background:'#fef2f2',color:'#dc2626',fontSize:11,cursor:'pointer'}}>Remove Logo</button>}</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              {/* Nav Logo - white/light version for dark nav bar */}
+              <div style={{border:'1px solid '+C.border,borderRadius:8,padding:12}}>
+                <div style={{fontSize:10,fontWeight:700,color:C.muted,marginBottom:6}}>NAV BAR LOGO</div>
+                <div style={{fontSize:8,color:C.muted,marginBottom:8}}>White/light version for dark nav background</div>
+                <div style={{width:'100%',height:44,borderRadius:6,background:navColor||'#002a3e',display:'flex',alignItems:'center',justifyContent:'center',padding:6,marginBottom:8}}>
+                  {navLogo?<img src={navLogo} style={{maxHeight:32,maxWidth:'90%',objectFit:'contain'}}/>:<span style={{color:'#fff',fontWeight:800,fontSize:12,fontStyle:'italic'}}>MIDDLEBY</span>}</div>
+                <div style={{display:'flex',gap:6}}><button onClick={()=>pickFile('image/*',saveNavLogo)} style={{padding:'4px 10px',borderRadius:5,border:'1px solid '+C.navy,background:'transparent',color:C.navy,fontSize:10,fontWeight:600,cursor:'pointer'}}>Upload</button>
+                  {navLogo&&<button onClick={()=>saveNavLogo('')} style={{padding:'4px 10px',borderRadius:5,border:'1px solid #fecaca',background:'#fef2f2',color:'#dc2626',fontSize:10,cursor:'pointer'}}>Remove</button>}</div>
+              </div>
+              {/* PDF Logo - full color version for white PDF background */}
+              <div style={{border:'1px solid '+C.border,borderRadius:8,padding:12}}>
+                <div style={{fontSize:10,fontWeight:700,color:C.muted,marginBottom:6}}>PDF / DOCUMENT LOGO</div>
+                <div style={{fontSize:8,color:C.muted,marginBottom:8}}>Full color version for white PDF background</div>
+                <div style={{width:'100%',height:44,borderRadius:6,background:'#fff',border:'1px solid #eee',display:'flex',alignItems:'center',justifyContent:'center',padding:6,marginBottom:8}}>
+                  {pdfLogo?<img src={pdfLogo} style={{maxHeight:32,maxWidth:'90%',objectFit:'contain'}}/>:<span style={{color:C.navy,fontWeight:800,fontSize:12,fontStyle:'italic'}}>MIDDLEBY</span>}</div>
+                <div style={{display:'flex',gap:6}}><button onClick={()=>pickFile('image/*',savePdfLogo)} style={{padding:'4px 10px',borderRadius:5,border:'1px solid '+C.navy,background:'transparent',color:C.navy,fontSize:10,fontWeight:600,cursor:'pointer'}}>Upload</button>
+                  {pdfLogo&&<button onClick={()=>savePdfLogo('')} style={{padding:'4px 10px',borderRadius:5,border:'1px solid #fecaca',background:'#fef2f2',color:'#dc2626',fontSize:10,cursor:'pointer'}}>Remove</button>}</div>
+              </div>
+            </div>
           </div>}
         </div>
       </div>}
