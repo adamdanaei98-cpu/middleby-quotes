@@ -218,20 +218,16 @@ function PDFContent() {
       </div>
 
       {/* ═══ TERMS ═══ */}
-      {terms&&terms.trim()&&<div className="page-letter" style={{height:'auto',minHeight:'11in'}}>
-        <div className="page-stripe">{stripe}</div>
-        <div className="page-content">
-          {hdr}
-          <div style={{fontSize:18,fontWeight:800,color:C.navy,marginBottom:14}}>Terms & Conditions</div>
-          <div contentEditable={ce} suppressContentEditableWarning style={{fontSize:9.5,lineHeight:1.8,color:'#444'}}>
-            {terms.split('\n').map((line,i) => {
-              if (!line.trim()) return <br key={i} />;
-              const isH = /^\d+\./.test(line.trim());
-              return <div key={i} style={{fontWeight:isH?700:400,color:isH?'#333':'#555',marginBottom:isH?2:0}}>{line}</div>;
-            })}
-          </div>
+      {terms&&terms.trim()&&<div style={{width:'8.5in',margin:'0 auto 24px',background:'#fff',boxShadow:'0 2px 16px rgba(0,0,0,.12)',padding:'0.5in 0.65in',fontFamily:'Inter,-apple-system,sans-serif',pageBreakBefore:'always'}}>
+        {hdr}
+        <div style={{fontSize:18,fontWeight:800,color:C.navy,marginBottom:14}}>Terms & Conditions</div>
+        <div contentEditable={ce} suppressContentEditableWarning style={{fontSize:9.5,lineHeight:1.8,color:'#444'}}>
+          {terms.split('\n').map((line,i) => {
+            if (!line.trim()) return <br key={i} />;
+            const isH = /^\d+\./.test(line.trim());
+            return <div key={i} style={{fontWeight:isH?700:400,color:isH?'#333':'#555',marginBottom:isH?2:0}}>{line}</div>;
+          })}
         </div>
-        <div className="page-stripe">{stripe}</div>
       </div>}
     </div>
   );
