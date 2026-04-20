@@ -3,15 +3,17 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuote } from '@/components/QuoteProvider';
+import { useAuth } from '@/components/AuthProvider';
 import { gP, itemDN, fP, fD, C, cTot } from '@/lib/transform';
 
 function MarginContent() {
+  const { user } = useAuth();
   const { cats, sels, companies, ci, loading, loadQuote } = useQuote();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
   const [quoteLoaded, setQuoteLoaded] = useState(false);
   const [loadingQuote, setLoadingQuote] = useState(!!quoteId);
-  const [generating, setGenerating] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (quoteId && !loading && !quoteLoaded) {
@@ -19,8 +21,6 @@ function MarginContent() {
       loadQuote(quoteId).then(() => { setQuoteLoaded(true); setLoadingQuote(false); });
     }
   }, [quoteId, loading, quoteLoaded]);
-
-  const handleDownload = () => { window.print(); };
 
   if (loading || loadingQuote) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'calc(100vh - 56px)'}}><div style={{fontSize:16,color:C.muted}}>Loading{quoteId ? ' quote...' : '...'}</div></div>;
 
@@ -59,13 +59,19 @@ function MarginContent() {
     ['mat','lh','lc','po','cost','lp','mg'].forEach(f=>{coGroups[sec.co].totals[f]+=sec.sub[f];});
   });
 
+  const isAdmin = user?.isAdmin;
+  const editable = isAdmin && editing;
+  const ce = editable ? true : undefined;
+
   return (
-    <div className="pdf-outer" style={{padding:20,background:'#f0f2f5',minHeight:'calc(100vh - 56px)'}}>
-      <div className="no-print" style={{textAlign:'center',marginBottom:16}}>
-        <button onClick={handleDownload} style={{padding:'10px 28px',borderRadius:8,border:'none',background:C.navy,fontSize:13,fontWeight:700,color:'#fff',cursor:'pointer'}}>Save as PDF</button>
-        <div style={{fontSize:10,color:C.muted,marginTop:6}}>Select "Save as PDF" as destination in the print dialog</div></div>
-      <div id="margin-content" style={{maxWidth:1200,margin:'0 auto',background:'#fff',padding:20,borderRadius:12}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+    <div className="pdf-outer" style={{padding:20,background:'#d1d5db',minHeight:'calc(100vh - 56px)'}}>
+      <div className="no-print" style={{textAlign:'center',marginBottom:20,display:'flex',justifyContent:'center',gap:10,alignItems:'center'}}>
+        <button onClick={()=>window.print()} style={{padding:'10px 28px',borderRadius:8,border:'none',background:C.navy,fontSize:13,fontWeight:700,color:'#fff',cursor:'pointer'}}>Save as PDF</button>
+        {isAdmin&&<button onClick={()=>setEditing(!editing)} style={{padding:'10px 20px',borderRadius:8,border:editing?'2px solid #e0c000':'1px solid #ccc',background:editing?'#fffde7':'#fff',fontSize:12,fontWeight:700,color:editing?'#b8860b':'#666',cursor:'pointer'}}>{editing?'\u2713 Editing On':'Edit Mode'}</button>}
+        {editing&&<span style={{fontSize:10,color:'#b8860b'}}>Click anywhere to edit</span>}
+      </div>
+      <div className="page-letter" style={{maxWidth:'11in',width:'11in',minHeight:'8.5in',padding:'0.4in 0.5in'}}>
+        <div contentEditable={ce} suppressContentEditableWarning style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
           <div><div style={{fontSize:18,fontWeight:800,color:C.navy}}>Margin Calculator</div>
             <div style={{fontSize:11,color:C.muted,marginTop:2}}>{ci.name}{ci.name?' • ':''}Rev. {ci.revision}</div></div>
           <div style={{fontSize:9,color:'#dc2626',fontWeight:700,background:'#fef2f2',padding:'4px 12px',borderRadius:6}}>ADMIN ONLY</div></div>
@@ -77,7 +83,7 @@ function MarginContent() {
             {[{l:'Total List Price',v:fP(tList),c:C.navy},{l:'Manufacturing Cost',v:fD(manC),c:'#64748b'},{l:'Margin Revenue',v:fD(mRev),c:mPct>=40?'#16a34a':'#ca8a04'},{l:'Gross Margin',v:mPct+'%',c:mPct>=40?'#16a34a':'#ca8a04'}].map((kpi,i)=>(
               <div key={i} style={{background:'#fff',borderRadius:10,padding:'16px 18px',border:'1px solid '+C.border,borderTop:'3px solid '+kpi.c}}>
                 <div style={{fontSize:9,fontWeight:700,color:C.muted,letterSpacing:'.05em'}}>{kpi.l}</div>
-                <div style={{fontSize:22,fontWeight:800,color:kpi.c,marginTop:4}}>{kpi.v}</div></div>))}
+                <div contentEditable={ce} suppressContentEditableWarning style={{fontSize:22,fontWeight:800,color:kpi.c,marginTop:4}}>{kpi.v}</div></div>))}
           </div>
 
           {Object.entries(coGroups).map(([coName,grp])=>{
@@ -109,15 +115,15 @@ function MarginContent() {
                         <td style={{padding:'8px 12px',textAlign:'right',borderTop:si>0?'2px solid '+C.border:'none'}}>{pill(sec.sub.mp)}</td></tr>,
                       ...sec.rows.map((r,ri)=>{const clr=r.mp>=50?'#16a34a':r.mp>=30?'#ca8a04':'#dc2626';return(
                         <tr key={'r-'+si+'-'+ri} style={{borderBottom:'1px solid #f3f4f6'}}>
-                          <td style={{padding:'6px 12px 6px 24px',color:'#444',maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.dn}</td>
-                          <td style={{padding:'6px 12px',textAlign:'center',color:C.muted,fontSize:10}}>{r.q}</td>
-                          <td style={{padding:'6px 12px',textAlign:'right',color:'#888',fontSize:10}}>{fD(r.mat)}</td>
-                          <td style={{padding:'6px 12px',textAlign:'right',color:'#888',fontSize:10}}>{r.lh.toFixed(1)}</td>
-                          <td style={{padding:'6px 12px',textAlign:'right',color:'#888',fontSize:10}}>{fD(r.lc)}</td>
-                          <td style={{padding:'6px 12px',textAlign:'right',color:'#888',fontSize:10}}>{fD(r.po)}</td>
-                          <td style={{padding:'6px 12px',textAlign:'right',fontWeight:500,fontSize:10}}>{fD(r.cost)}</td>
-                          <td style={{padding:'6px 12px',textAlign:'right',fontWeight:600,color:grp.color}}>{fD(r.lp)}</td>
-                          <td style={{padding:'6px 12px',textAlign:'right',fontWeight:500,color:clr}}>{fD(r.mg)}</td>
+                          <td contentEditable={ce} suppressContentEditableWarning style={{padding:'6px 12px 6px 24px',color:'#444',maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.dn}</td>
+                          <td contentEditable={ce} suppressContentEditableWarning style={{padding:'6px 12px',textAlign:'center',color:C.muted,fontSize:10}}>{r.q}</td>
+                          <td contentEditable={ce} suppressContentEditableWarning style={{padding:'6px 12px',textAlign:'right',color:'#888',fontSize:10}}>{fD(r.mat)}</td>
+                          <td contentEditable={ce} suppressContentEditableWarning style={{padding:'6px 12px',textAlign:'right',color:'#888',fontSize:10}}>{r.lh.toFixed(1)}</td>
+                          <td contentEditable={ce} suppressContentEditableWarning style={{padding:'6px 12px',textAlign:'right',color:'#888',fontSize:10}}>{fD(r.lc)}</td>
+                          <td contentEditable={ce} suppressContentEditableWarning style={{padding:'6px 12px',textAlign:'right',color:'#888',fontSize:10}}>{fD(r.po)}</td>
+                          <td contentEditable={ce} suppressContentEditableWarning style={{padding:'6px 12px',textAlign:'right',fontWeight:500,fontSize:10}}>{fD(r.cost)}</td>
+                          <td contentEditable={ce} suppressContentEditableWarning style={{padding:'6px 12px',textAlign:'right',fontWeight:600,color:grp.color}}>{fD(r.lp)}</td>
+                          <td contentEditable={ce} suppressContentEditableWarning style={{padding:'6px 12px',textAlign:'right',fontWeight:500,color:clr}}>{fD(r.mg)}</td>
                           <td style={{padding:'6px 12px',textAlign:'right'}}>{pill(r.mp)}</td></tr>);})
                     ])}
                     <tr style={{background:grp.color+'10'}}>
