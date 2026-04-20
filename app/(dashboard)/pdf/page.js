@@ -218,7 +218,7 @@ function PDFContent() {
       </div>
 
       {/* ═══ TERMS ═══ */}
-      {terms&&terms.trim()&&<div className="page-letter">
+      {terms&&terms.trim()&&<div className="page-letter" style={{height:'auto',minHeight:'11in'}}>
         <div className="page-stripe">{stripe}</div>
         <div className="page-content">
           {hdr}
