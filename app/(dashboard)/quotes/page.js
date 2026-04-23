@@ -1,7 +1,7 @@
 // app/(dashboard)/quotes/page.js
 'use client';
 import { useAuth } from '@/components/AuthProvider';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { C } from '@/lib/transform';
 
 const STATUS = {
@@ -12,7 +12,7 @@ const STATUS = {
   approved:{l:'Approved',c:'#16a34a',bg:'#dcfce7'},
   expired:{l:'Expired',c:'#8b919e',bg:'#f3f4f6'},
 };
-const ROLES={salesperson:'Sales Rep',reviewer:'Reviewer',manager:'Manager',supervisor:'Executive'};
+const ROLES={salesperson:'Sales Rep',reviewer:'Reviewer',manager:'Manager',supervisor:'Executive',it:'IT Admin'};
 const fP=n=>'$'+Math.round(n||0).toLocaleString('en-US');
 
 export default function QuotesPage() {
@@ -202,7 +202,7 @@ export default function QuotesPage() {
               <td onClick={()=>openDetail(q.id)} style={{padding:'8px 12px',textAlign:'right',fontWeight:700,color:'#003250'}}>{fP(q.grandTotal)}</td>
               <td onClick={()=>openDetail(q.id)} style={{padding:'8px 12px'}}><div style={{fontSize:10}}>{q.createdBy?.name||'\u2014'}</div><div style={{fontSize:8,color:'#8b919e'}}>{ROLES[q.createdBy?.role]||''}</div></td>
               <td onClick={()=>openDetail(q.id)} style={{padding:'8px 12px',color:'#8b919e',fontSize:10}}>{new Date(q.createdAt).toLocaleDateString()}</td>
-              <td onClick={()=>openDetail(q.id)} style={{padding:'8px 12px'}}><span style={{fontSize:9,color:'#003250',fontWeight:600}}>View \u2192</span></td>
+              <td onClick={()=>openDetail(q.id)} style={{padding:'8px 12px'}}><span style={{fontSize:9,color:'#003250',fontWeight:600,cursor:'pointer'}}>View →</span></td>
             </tr>);})}</tbody>
         </table>}
       </div>
@@ -245,15 +245,60 @@ export default function QuotesPage() {
               <button onClick={()=>{setSelected(null);setDetail(null);window.location.href='/pdf?quoteId='+detail.id;}} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'1px solid #003250',background:'#fff',color:'#003250',fontSize:12,fontWeight:700,cursor:'pointer'}}>View PDF</button>
               <button onClick={()=>{setSelected(null);setDetail(null);window.location.href='/margin?quoteId='+detail.id;}} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'1px solid #059669',background:'#fff',color:'#059669',fontSize:12,fontWeight:700,cursor:'pointer'}}>View Margin</button>
             </div>
-            <div style={{marginBottom:16,padding:'12px 16px',background:'#fff',border:'1px solid #e2e4e9',borderRadius:8}}>
-              <div style={{fontSize:11,fontWeight:700,color:'#003250',marginBottom:8}}>Workflow</div>
-              <div style={{fontSize:11,color:'#555'}}>
-                <div style={{marginBottom:4}}>Created by <strong>{detail.createdBy?.name}</strong> on {new Date(detail.createdAt).toLocaleString()}</div>
-                {detail.submittedAt&&<div style={{marginBottom:4}}>Submitted {new Date(detail.submittedAt).toLocaleString()}{detail.submitNote&&<span style={{color:'#8b919e'}}> \u2014 "{detail.submitNote}"</span>}</div>}
-                {detail.infoRequestedAt&&<div style={{marginBottom:4,color:'#9333ea'}}>Info requested {new Date(detail.infoRequestedAt).toLocaleString()}{detail.infoRequestNote&&<span> \u2014 "{detail.infoRequestNote}"</span>}</div>}
-                {detail.reviewedAt&&<div style={{marginBottom:4,color:'#2563eb'}}>Reviewed by <strong>{detail.reviewedBy?.name}</strong> {new Date(detail.reviewedAt).toLocaleString()}</div>}
-                {detail.approvedAt&&<div style={{color:'#16a34a'}}>Approved by <strong>{detail.approvedBy?.name}</strong> {new Date(detail.approvedAt).toLocaleString()}</div>}
-              </div>
+            {/* Visual Status Tracker */}
+            <div style={{marginBottom:16,padding:'16px 16px',background:'#fff',border:'1px solid #e2e4e9',borderRadius:8}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#003250',marginBottom:12}}>Quote Status</div>
+              {(()=>{
+                const steps=[
+                  {key:'draft',label:'Draft',icon:'\u270F\uFE0F'},
+                  {key:'submitted',label:'Submitted',icon:'\u2709\uFE0F'},
+                  {key:'info_requested',label:'Info Requested',icon:'\u2753',optional:true},
+                  {key:'reviewed',label:'Reviewed',icon:'\u2705'},
+                  {key:'approved',label:'Approved',icon:'\u2B50'}
+                ];
+                const statusOrder={draft:0,submitted:1,info_requested:1,reviewed:3,approved:4};
+                const current=statusOrder[detail.status]??0;
+                const activeSteps=steps.filter(s=>!s.optional||detail.status===s.key||detail.infoRequestedAt);
+                return(
+                  <div>
+                    <div style={{display:'flex',alignItems:'center',gap:0,marginBottom:14}}>
+                      {activeSteps.map((step,i)=>{
+                        const stepIdx=steps.indexOf(step);
+                        const isActive=detail.status===step.key;
+                        const isPast=statusOrder[detail.status]>statusOrder[step.key];
+                        const sc=STATUS[step.key]||STATUS.draft;
+                        return(<Fragment key={step.key}>
+                          {i>0&&<div style={{flex:1,height:2,background:isPast||isActive?sc.c+'44':'#e2e4e9'}} />}
+                          <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+                            <div style={{width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,
+                              background:isActive?sc.c:isPast?sc.c+'22':'#f3f4f6',
+                              color:isActive?'#fff':isPast?sc.c:'#ccc',
+                              border:isActive?'2px solid '+sc.c:isPast?'2px solid '+sc.c+'44':'2px solid #e2e4e9'}}>
+                              {isPast?'\u2713':i+1}</div>
+                            <span style={{fontSize:8,fontWeight:isActive?700:500,color:isActive?sc.c:isPast?'#555':'#bbb'}}>{step.label}</span>
+                          </div>
+                        </Fragment>);
+                      })}
+                    </div>
+                    {/* Status message */}
+                    <div style={{background:STATUS[detail.status]?.bg||'#f3f4f6',borderRadius:6,padding:'8px 12px',fontSize:10,color:STATUS[detail.status]?.c||'#555'}}>
+                      {detail.status==='draft'&&<span>Draft — waiting to be submitted for review</span>}
+                      {detail.status==='submitted'&&<span>Submitted — waiting for reviewer {detail.reviewedBy?.name||''} to review</span>}
+                      {detail.status==='info_requested'&&<span>More info requested — waiting for {detail.createdBy?.name||'creator'} to update and resubmit{detail.infoRequestNote&&<span style={{fontStyle:'italic'}}> — "{detail.infoRequestNote}"</span>}</span>}
+                      {detail.status==='reviewed'&&<span>Reviewed — waiting for manager approval</span>}
+                      {detail.status==='approved'&&<span>Approved by {detail.approvedBy?.name||'manager'} on {detail.approvedAt?new Date(detail.approvedAt).toLocaleDateString():''}</span>}
+                    </div>
+                    {/* Timeline */}
+                    <div style={{marginTop:10,fontSize:10,color:'#777',borderTop:'1px solid #f3f4f6',paddingTop:8}}>
+                      <div>Created by <strong>{detail.createdBy?.name}</strong> — {new Date(detail.createdAt).toLocaleString()}</div>
+                      {detail.submittedAt&&<div style={{marginTop:3}}>Submitted — {new Date(detail.submittedAt).toLocaleString()}{detail.submitNote&&<span style={{color:'#aaa'}}> — "{detail.submitNote}"</span>}</div>}
+                      {detail.infoRequestedAt&&<div style={{marginTop:3,color:'#9333ea'}}>Info requested — {new Date(detail.infoRequestedAt).toLocaleString()}</div>}
+                      {detail.reviewedAt&&<div style={{marginTop:3,color:'#2563eb'}}>Reviewed by {detail.reviewedBy?.name} — {new Date(detail.reviewedAt).toLocaleString()}</div>}
+                      {detail.approvedAt&&<div style={{marginTop:3,color:'#16a34a'}}>Approved by {detail.approvedBy?.name} — {new Date(detail.approvedAt).toLocaleString()}</div>}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             {(()=>{
               const actions=getActions();

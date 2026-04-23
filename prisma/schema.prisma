@@ -12,12 +12,14 @@ datasource db {
 // reviewer:    reviews quotes, edits catalog for own companies
 // manager:     approves quotes (final step), read-only catalog unless isAdmin
 // supervisor:  corporate level, full access across all companies
+// it:          IT admin, full system access at corporate or company level
 
 enum Role {
   salesperson
   reviewer
   manager
   supervisor
+  it
 }
 
 enum QuoteStatus {

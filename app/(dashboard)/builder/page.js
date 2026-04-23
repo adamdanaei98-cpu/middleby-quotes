@@ -95,8 +95,14 @@ export default function BuilderPage() {
   const userCoKey = coKeys.find(k => companies[k]?.id === user?.primaryCompanyId) || coKeys[0] || null;
 
   useEffect(() => {
-    fetch('/api/users').then(r => r.ok ? r.json() : {}).then(d => setReviewers((d.users || []).filter(u => u.role === 'reviewer'))).catch(() => {});
-  }, []);
+    fetch('/api/users').then(r => r.ok ? r.json() : {}).then(d => {
+      const allReviewers = (d.users || []).filter(u => u.role === 'reviewer');
+      // Filter to same company as current user (corporate sees all)
+      const myCoId = user?.primaryCompanyId;
+      const filtered = myCoId ? allReviewers.filter(u => u.primaryCompanyId === myCoId) : allReviewers;
+      setReviewers(filtered);
+    }).catch(() => {});
+  }, [user]);
 
   // Initialize activeCos when companies load
   useEffect(() => {

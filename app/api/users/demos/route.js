@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-const ROLES = { salesperson: 'Sales Rep', reviewer: 'Reviewer', manager: 'Manager', supervisor: 'Executive' };
+const ROLES = { salesperson: 'Sales Rep', reviewer: 'Reviewer', manager: 'Manager', supervisor: 'Executive', it: 'IT Admin' };
 export async function GET() {
   try {
     const users = await db.user.findMany({ where: { active: true }, select: { name: true, email: true, role: true, isAdmin: true, primaryCompanyId: true }, orderBy: { createdAt: 'asc' }, take: 8 });

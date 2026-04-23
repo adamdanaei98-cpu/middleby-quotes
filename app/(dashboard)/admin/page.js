@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { gP, cTot, fP, C } from '@/lib/transform';
 
-const RO=[{v:'salesperson',l:'Sales Rep'},{v:'reviewer',l:'Reviewer'},{v:'manager',l:'Manager'},{v:'supervisor',l:'Executive'}];
+const RO=[{v:'salesperson',l:'Sales Rep'},{v:'reviewer',l:'Reviewer'},{v:'manager',l:'Manager'},{v:'supervisor',l:'Executive'},{v:'it',l:'IT Admin'}];
 const f2b=(file,cb)=>{const r=new FileReader();r.onload=()=>cb(r.result);r.readAsDataURL(file);};
 const pickFile=(accept,cb)=>{const i=document.createElement('input');i.type='file';i.accept=accept;i.onchange=e=>{if(e.target.files[0])f2b(e.target.files[0],cb);};i.click();};
 const parseCSV=(text)=>{const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);if(lines.length<2)return[];const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));return lines.slice(1).map(line=>{const vals=line.split(',').map(v=>v.trim().replace(/^"|"$/g,''));const obj={};headers.forEach((h,i)=>{obj[h]=vals[i]||'';});return obj;});};
@@ -477,7 +477,7 @@ export default function AdminPage() {
                 {canManage&&<td style={{padding:'6px 10px'}} onClick={e=>e.stopPropagation()}><input type="checkbox" checked={ck} onChange={()=>{setCheckedUsers(p=>{const n=new Set(p);if(n.has(u.id))n.delete(u.id);else n.add(u.id);return n;});}} style={{cursor:'pointer'}}/></td>}
                 <td onClick={()=>{if(editable){setModalData({...u,password:''});setShowModal('editUser');}}} style={{padding:'6px 12px',fontWeight:600,color:'#003250'}}>{u.name}</td>
                 <td style={{padding:'6px 12px',color:'#555'}}>{u.email}</td>
-                <td style={{padding:'6px 12px'}}><span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:10,background:u.role==='supervisor'?'#dbeafe':u.role==='manager'?'#dcfce7':u.role==='reviewer'?'#fef9c3':'#f3f4f6',color:u.role==='supervisor'?'#2563eb':u.role==='manager'?'#16a34a':u.role==='reviewer'?'#a16207':'#6b7085'}}>{RO.find(r=>r.v===u.role)?.l}</span></td>
+                <td style={{padding:'6px 12px'}}><span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:10,background:u.role==='supervisor'?'#dbeafe':u.role==='manager'?'#dcfce7':u.role==='reviewer'?'#fef9c3':u.role==='it'?'#fce7f3':'#f3f4f6',color:u.role==='supervisor'?'#2563eb':u.role==='manager'?'#16a34a':u.role==='reviewer'?'#a16207':u.role==='it'?'#be185d':'#6b7085'}}>{RO.find(r=>r.v===u.role)?.l}</span></td>
                 <td style={{padding:'6px 12px'}}>{u.isAdmin&&<span style={{fontSize:10,fontWeight:600,color:'#E12C3E',background:'#fef2f2',padding:'2px 8px',borderRadius:10}}>Admin</span>}</td>
                 <td style={{padding:'6px 12px'}}><span style={{fontSize:10,fontWeight:600,color:u.active?'#16a34a':'#dc2626'}}>{u.active?'Active':'Inactive'}</span></td>
               </tr>);})}</tbody></table></div>}
