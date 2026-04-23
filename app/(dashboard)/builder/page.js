@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuote } from '@/components/QuoteProvider';
 import { useAuth } from '@/components/AuthProvider';
 import { gP, cTot, fP, C } from '@/lib/transform';
@@ -83,6 +84,7 @@ function CatPanel({ label, color, cat, sel, setSel, bg2 }) {
 
 export default function BuilderPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const { cats, sels, setSels, companies, customers, loading, mode, setMode, ci, setCi, approval, setApproval, tots, gt, terms } = useQuote();
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selReviewer, setSelReviewer] = useState('');
@@ -175,10 +177,10 @@ export default function BuilderPage() {
               <span>Total</span><span>{fP(visGt)}</span>
             </div>
           </div>
-          {/* Preview buttons */}
+          {/* Preview buttons - navigate in same tab */}
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <button onClick={() => window.open('/pdf', '_blank')} style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: '1px solid ' + C.navy, background: 'transparent', color: C.navy, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Preview PDF</button>
-            <button onClick={() => window.open('/margin', '_blank')} style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: '1px solid #059669', background: 'transparent', color: '#059669', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Preview Margin</button>
+            <button onClick={() => router.push('/pdf')} style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: '1px solid ' + C.navy, background: 'transparent', color: C.navy, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Preview PDF</button>
+            <button onClick={() => router.push('/margin')} style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: '1px solid #059669', background: 'transparent', color: '#059669', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Preview Margin</button>
           </div>
           <div style={{ borderTop: '1px solid ' + C.border, paddingTop: 10, marginTop: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
