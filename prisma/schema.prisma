@@ -28,6 +28,7 @@ enum QuoteStatus {
   info_requested
   reviewed
   approved
+  sent
   expired
 }
 

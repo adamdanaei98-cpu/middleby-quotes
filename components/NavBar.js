@@ -4,7 +4,7 @@ import { useQuote } from './QuoteProvider';
 import { usePathname, useRouter } from 'next/navigation';
 
 const ROLES = { salesperson: 'Sales Rep', reviewer: 'Reviewer', manager: 'Manager', supervisor: 'Executive', it: 'IT Admin' };
-const NAV = [{ id: '/builder', l: 'Builder' }, { id: '/quotes', l: 'Quotes' }, { id: '/margin', l: 'Margin' }, { id: '/pdf', l: 'PDF' }];
+const NAV = [{ id: '/builder', l: 'Builder' }, { id: '/quotes', l: 'Quotes' }];
 
 export default function NavBar() {
   const { user, logout, canAdmin } = useAuth();

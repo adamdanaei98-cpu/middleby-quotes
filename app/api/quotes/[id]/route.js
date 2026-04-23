@@ -23,7 +23,7 @@ export async function GET(request, { params }) {
 export async function PATCH(request, { params }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const { action, note, reviewerId, selections, grandTotal } = await request.json();
+  const { action, note, reviewerId, managerId, selections, grandTotal } = await request.json();
   const quote = await db.quote.findUnique({ where: { id: params.id } });
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -39,7 +39,7 @@ export async function PATCH(request, { params }) {
       break;
     case 'review_approve':
       if (!canReviewQuotes(user)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-      update = { status: 'reviewed', reviewerId: user.id, reviewedAt: new Date(), reviewNote: note };
+      update = { status: 'reviewed', reviewerId: user.id, reviewedAt: new Date(), reviewNote: note, managerId: managerId || null };
       break;
     case 'approve':
       if (!canApproveQuotes(user)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -48,6 +48,10 @@ export async function PATCH(request, { params }) {
     case 'recall':
       if (quote.createdById !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       update = { status: 'draft', submittedAt: null, submitNote: null, reviewerId: null, reviewedAt: null, reviewNote: null };
+      break;
+    case 'mark_sent':
+      if (quote.status !== 'approved') return NextResponse.json({ error: 'Invalid state' }, { status: 400 });
+      update = { status: 'sent' };
       break;
     case 'save':
       update = { selections, grandTotal };

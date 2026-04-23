@@ -10,6 +10,7 @@ const STATUS = {
   info_requested:{l:'Info Requested',c:'#9333ea',bg:'#f3e8ff'},
   reviewed:{l:'Reviewed',c:'#2563eb',bg:'#dbeafe'},
   approved:{l:'Approved',c:'#16a34a',bg:'#dcfce7'},
+  sent:{l:'Sent to Customer',c:'#0891b2',bg:'#cffafe'},
   expired:{l:'Expired',c:'#8b919e',bg:'#f3f4f6'},
 };
 const ROLES={salesperson:'Sales Rep',reviewer:'Reviewer',manager:'Manager',supervisor:'Executive',it:'IT Admin'};
@@ -79,6 +80,7 @@ export default function QuotesPage() {
     if (s==='submitted'&&user.role==='reviewer') { a.push({key:'review_approve',label:'Approve to Manager',color:'#2563eb',needsManager:true}); a.push({key:'request_info',label:'Request More Info',color:'#9333ea',needsNote:true}); }
     if (s==='info_requested'&&isCreator) a.push({key:'submit',label:'Resubmit',color:'#d97706'});
     if (s==='reviewed'&&user.role==='manager') a.push({key:'approve',label:'Final Approve',color:'#16a34a'});
+    if (s==='approved') a.push({key:'mark_sent',label:'Mark as Sent',color:'#0891b2'});
     return a;
   };
 
@@ -148,7 +150,7 @@ export default function QuotesPage() {
       {/* Filters row */}
       <div style={{display:'flex',gap:8,marginBottom:14,alignItems:'center',flexWrap:'wrap'}}>
         <div style={{display:'flex',gap:2,background:'#fff',padding:3,borderRadius:8,border:'1px solid #e2e4e9'}}>
-          {['all','draft','submitted','info_requested','reviewed','approved'].map(f=>(
+          {['all','draft','submitted','info_requested','reviewed','approved','sent'].map(f=>(
             <button key={f} onClick={()=>setFilter(f)} style={{padding:'4px 10px',borderRadius:5,border:'none',cursor:'pointer',fontSize:10,fontWeight:600,background:filter===f?'#003250':'transparent',color:filter===f?'#fff':'#8b919e'}}>
               {f==='all'?'All':STATUS[f]?.l}{f!=='all'?' ('+quotes.filter(q=>q.status===f).length+')':''}</button>))}
         </div>
@@ -254,9 +256,10 @@ export default function QuotesPage() {
                   {key:'submitted',label:'Submitted',icon:'\u2709\uFE0F'},
                   {key:'info_requested',label:'Info Requested',icon:'\u2753',optional:true},
                   {key:'reviewed',label:'Reviewed',icon:'\u2705'},
-                  {key:'approved',label:'Approved',icon:'\u2B50'}
+                  {key:'approved',label:'Approved',icon:'\u2B50'},
+                  {key:'sent',label:'Sent',icon:'\u2709\uFE0F'}
                 ];
-                const statusOrder={draft:0,submitted:1,info_requested:1,reviewed:3,approved:4};
+                const statusOrder={draft:0,submitted:1,info_requested:1,reviewed:3,approved:4,sent:5};
                 const current=statusOrder[detail.status]??0;
                 const activeSteps=steps.filter(s=>!s.optional||detail.status===s.key||detail.infoRequestedAt);
                 return(
@@ -286,7 +289,8 @@ export default function QuotesPage() {
                       {detail.status==='submitted'&&<span>Submitted — waiting for reviewer {detail.reviewedBy?.name||''} to review</span>}
                       {detail.status==='info_requested'&&<span>More info requested — waiting for {detail.createdBy?.name||'creator'} to update and resubmit{detail.infoRequestNote&&<span style={{fontStyle:'italic'}}> — "{detail.infoRequestNote}"</span>}</span>}
                       {detail.status==='reviewed'&&<span>Reviewed — waiting for manager approval</span>}
-                      {detail.status==='approved'&&<span>Approved by {detail.approvedBy?.name||'manager'} on {detail.approvedAt?new Date(detail.approvedAt).toLocaleDateString():''}</span>}
+                      {detail.status==='approved'&&<span>Approved by {detail.approvedBy?.name||'manager'} on {detail.approvedAt?new Date(detail.approvedAt).toLocaleDateString():''} — ready to send to customer</span>}
+                      {detail.status==='sent'&&<span>Sent to customer</span>}
                     </div>
                     {/* Timeline */}
                     <div style={{marginTop:10,fontSize:10,color:'#777',borderTop:'1px solid #f3f4f6',paddingTop:8}}>
