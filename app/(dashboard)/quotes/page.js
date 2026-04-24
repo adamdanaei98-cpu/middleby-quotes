@@ -228,7 +228,7 @@ export default function QuotesPage() {
         <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:640,maxHeight:'90vh',overflowY:'auto'}}>
           {loadingDetail?<div style={{padding:40,textAlign:'center',color:'#8b919e'}}>Loading...</div>:detail&&<div>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'start',marginBottom:16}}>
-              <div><div style={{fontSize:20,fontWeight:800,color:'#003250'}}>{detail.quoteNumber}</div><div style={{fontSize:11,color:'#8b919e'}}>Rev. {detail.revision} \u2022 {detail.mode} \u2022 {new Date(detail.createdAt).toLocaleDateString()}</div></div>
+              <div><div style={{fontSize:20,fontWeight:800,color:'#003250'}}>{detail.quoteNumber}</div><div style={{fontSize:11,color:'#8b919e'}}>Rev. {detail.revision} • {detail.mode} • {new Date(detail.createdAt).toLocaleDateString()}</div></div>
               <div>{(()=>{const sc=STATUS[detail.status]||STATUS.draft;return <span style={{fontSize:12,fontWeight:700,color:sc.c,background:sc.bg,padding:'4px 14px',borderRadius:10}}>{sc.l}</span>;})()}</div>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16,padding:'12px 16px',background:'#f8f9fb',borderRadius:8}}>
@@ -244,8 +244,8 @@ export default function QuotesPage() {
                 <span style={{fontSize:10,fontWeight:600,color:'#003250',background:'#e0e7ff',padding:'3px 10px',borderRadius:6}}>{detail.mode==='bundle'?'Bundle':'Individual'}</span>
               </div></div>}
             <div style={{display:'flex',gap:8,marginBottom:16}}>
-              <button onClick={()=>{setSelected(null);setDetail(null);window.location.href='/pdf?quoteId='+detail.id;}} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'1px solid #003250',background:'#fff',color:'#003250',fontSize:12,fontWeight:700,cursor:'pointer'}}>View PDF</button>
-              <button onClick={()=>{setSelected(null);setDetail(null);window.location.href='/margin?quoteId='+detail.id;}} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'1px solid #059669',background:'#fff',color:'#059669',fontSize:12,fontWeight:700,cursor:'pointer'}}>View Margin</button>
+              <button onClick={()=>window.open('/pdf?quoteId='+detail.id,'_blank')} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'1px solid #003250',background:'#fff',color:'#003250',fontSize:12,fontWeight:700,cursor:'pointer'}}>View PDF</button>
+              <button onClick={()=>window.open('/margin?quoteId='+detail.id,'_blank')} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'1px solid #059669',background:'#fff',color:'#059669',fontSize:12,fontWeight:700,cursor:'pointer'}}>View Margin</button>
             </div>
             {/* Visual Status Tracker */}
             <div style={{marginBottom:16,padding:'16px 16px',background:'#fff',border:'1px solid #e2e4e9',borderRadius:8}}>

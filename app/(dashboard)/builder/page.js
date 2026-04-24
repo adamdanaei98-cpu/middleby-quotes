@@ -273,13 +273,18 @@ export default function BuilderPage() {
     </div>
 
     {/* Preview Modal */}
-    {previewModal && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200, overflow: 'auto' }} onClick={() => setPreviewModal(null)}>
-      <div style={{ maxWidth: previewModal === 'margin' ? 1200 : 900, margin: '20px auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 12, position: 'sticky', top: 10, zIndex: 10 }}>
-          <button onClick={() => setPreviewModal(null)} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#fff', color: '#666', fontSize: 12, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.2)' }}>✕ Close</button>
-          <button onClick={() => { setPreviewModal(null); window.setTimeout(() => { const el = document.getElementById('preview-print'); if (el) { const w = window.open('', '_blank'); w.document.write(el.innerHTML); w.document.close(); w.print(); } }, 100); }} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: C.navy, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.2)' }}>Save as PDF</button>
+    {previewModal && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflow: 'auto', padding: '30px 20px' }} onClick={() => setPreviewModal(null)}>
+      <div style={{ background: '#fff', borderRadius: 14, width: previewModal === 'margin' ? 1100 : 800, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,.3)' }} onClick={e => e.stopPropagation()}>
+        {/* Modal header */}
+        <div style={{ position: 'sticky', top: 0, background: '#fff', borderBottom: '1px solid #e2e4e9', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, borderRadius: '14px 14px 0 0' }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: C.navy }}>{previewModal === 'pdf' ? 'PDF Preview' : 'Margin Preview'}</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => { setPreviewModal(null); router.push(previewModal === 'pdf' ? '/pdf' : '/margin'); }} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid ' + C.navy, background: '#fff', color: C.navy, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Open Full Page</button>
+            <button onClick={() => setPreviewModal(null)} style={{ padding: '6px 16px', borderRadius: 8, border: '1px solid #e2e4e9', background: '#fff', color: '#666', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+          </div>
         </div>
-        <div id="preview-print">
+        {/* Modal content */}
+        <div style={{ padding: 20, background: '#f4f5f7' }}>
           {previewModal === 'pdf' && <PDFPreview />}
           {previewModal === 'margin' && <MarginPreview />}
         </div>
