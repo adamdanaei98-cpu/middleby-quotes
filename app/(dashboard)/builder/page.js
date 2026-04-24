@@ -138,18 +138,6 @@ export default function BuilderPage() {
   const statusLabels = { draft: 'Draft', pending: 'Pending Review', approved: 'Approved', rejected: 'Rejected' };
 
   return (
-    <div>
-      {/* Toolbar */}
-      <div style={{ background: '#fff', borderBottom: '1px solid ' + C.border, padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>Quote Builder</span>
-          {visGt > 0 && <span style={{ fontSize: 11, color: C.muted }}>Total: <strong style={{ color: C.navy }}>{fP(visGt)}</strong></span>}
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => router.push('/pdf')} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid ' + C.navy, background: 'transparent', color: C.navy, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>Preview PDF</button>
-          <button onClick={() => router.push('/margin')} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #059669', background: 'transparent', color: '#059669', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>Preview Margin</button>
-        </div>
-      </div>
     <div style={{ display: 'flex', gap: 20, maxWidth: 1320, margin: '0 auto', padding: 20 }}>
       <div style={{ width: 280, flexShrink: 0 }}>
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid ' + C.border, padding: 16, position: 'sticky', top: 64 }}>
@@ -274,7 +262,6 @@ export default function BuilderPage() {
           return <CatPanel key={k} label={co.name.toUpperCase()} color={co.color} cat={cats[k] || {}} sel={sels[k] || {}} setSel={s => setSels(prev => ({ ...prev, [k]: s }))} bg2={co.bg} />;
         })}
       </div>
-    </div>
     </div>
   );
 }
