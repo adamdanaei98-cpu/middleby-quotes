@@ -60,7 +60,9 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
-  const updated = await db.quote.update({ where: { id: params.id }, data: update });
+  const updated = await db.quote.update({ where: { id: params.id }, data: update, include: { createdBy: { select: { name: true, email: true } } } });
+  // Add createdByName for email templates
+  updated.createdByName = updated.createdBy?.name || '';
   await db.auditLog.create({ data: { quoteId: params.id, userId: user.id, action, details: { note } } });
 
   // Send email notifications

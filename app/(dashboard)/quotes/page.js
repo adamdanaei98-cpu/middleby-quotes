@@ -58,7 +58,11 @@ export default function QuotesPage() {
 
   useEffect(() => {
     loadQuotes();
-    fetch('/api/users').then(r=>r.ok?r.json():{}).then(d=>setManagers((d.users||[]).filter(u=>u.role==='manager'))).catch(()=>{});
+    fetch('/api/users').then(r=>r.ok?r.json():{}).then(d=>{
+      const allMgrs=(d.users||[]).filter(u=>u.role==='manager');
+      const myCoId=user?.primaryCompanyId;
+      setManagers(myCoId?allMgrs.filter(u=>u.primaryCompanyId===myCoId):allMgrs);
+    }).catch(()=>{});
     fetch('/api/catalog').then(r=>r.ok?r.json():{}).then(d=>setAllCompanies(d.companies||[])).catch(()=>{});
   }, []);
 
