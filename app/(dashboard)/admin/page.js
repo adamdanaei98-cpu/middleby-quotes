@@ -176,8 +176,8 @@ export default function AdminPage() {
   const cd = companies[co] || companies[coKeys[0]] || { name:'', color:'#999', desc:'', rates:{} };
   const cat = cats[co] || {};
   const sectionNames = Object.keys(cat);
-  const isCorporate = user.role === 'supervisor' || (user.isAdmin && !user.primaryCompanyId);
-  const isCorporateAdm = user.isAdmin && (!user.primaryCompanyId || user.role === 'supervisor');
+  const isCorporate = user.role === 'supervisor' || (user.role === 'it' && !user.primaryCompanyId) || (user.isAdmin && !user.primaryCompanyId);
+  const isCorporateAdm = user.isAdmin && (!user.primaryCompanyId || user.role === 'supervisor') || (user.role === 'it' && !user.primaryCompanyId);
 
   // Get the company key for the current user's primary company
   const userCoKey = (() => {

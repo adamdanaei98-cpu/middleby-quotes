@@ -123,7 +123,7 @@ export default function BuilderPage() {
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - 56px)' }}><div style={{ fontSize: 16, color: C.muted }}>Loading catalog...</div></div>;
 
-  const isCorporate = user.role === 'supervisor' || (user.isAdmin && !user.primaryCompanyId);
+  const isCorporate = user.role === 'supervisor' || (user.role === 'it' && !user.primaryCompanyId) || (user.isAdmin && !user.primaryCompanyId);
 
   // Which companies are visible?
   const visibleCos = mode === 'individual'
