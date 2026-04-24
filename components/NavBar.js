@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 const ROLES = { salesperson: 'Sales Rep', reviewer: 'Reviewer', manager: 'Manager', supervisor: 'Executive', it: 'IT Admin' };
 const NAV = [
   { id: '/builder', l: 'Builder' },
+  { id: '/pdf', l: 'PDF' },
+  { id: '/margin', l: 'Margin' },
   { id: '/quotes', l: 'Quotes' },
 ];
 

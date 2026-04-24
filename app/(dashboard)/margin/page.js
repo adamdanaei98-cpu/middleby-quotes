@@ -77,7 +77,6 @@ function MarginContent() {
     <div className="pdf-outer" style={{padding:20,background:'#d1d5db',minHeight:'calc(100vh - 56px)'}}>
       <div className="no-print" style={{textAlign:'center',marginBottom:20}}>
         <div style={{display:'inline-flex',gap:10,alignItems:'center'}}>
-          <button onClick={()=>window.history.back()} style={{padding:'10px 20px',borderRadius:8,border:'1px solid #ccc',background:'#fff',fontSize:12,fontWeight:600,color:'#666',cursor:'pointer'}}>← Back</button>
           <button onClick={()=>window.print()} style={{padding:'10px 28px',borderRadius:8,border:'none',background:C.navy,fontSize:13,fontWeight:700,color:'#fff',cursor:'pointer'}}>Save as PDF</button>
           {isAdmin&&<button onClick={()=>setEditing(!editing)} style={{padding:'10px 20px',borderRadius:8,border:editing?'2px solid #e0c000':'1px solid #ccc',background:editing?'#fffde7':'#fff',fontSize:12,fontWeight:700,color:editing?'#b8860b':'#666',cursor:'pointer'}}>{editing?'✓ Editing On':'Edit Mode'}</button>}
         </div>
