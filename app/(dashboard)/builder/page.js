@@ -142,8 +142,8 @@ function BuilderContent() {
   const visTots = tots.filter(([k]) => visibleCos.includes(k));
   const visGt = visTots.reduce((a, [, t]) => a + t.g, 0);
 
-  const statusColors = { draft: '#6b7085', pending: '#d97706', approved: '#16a34a', rejected: '#dc2626' };
-  const statusLabels = { draft: 'Draft', pending: 'Pending Review', approved: 'Approved', rejected: 'Rejected' };
+  const statusColors = { draft: '#6b7085', pending: '#d97706', submitted: '#d97706', reviewed: '#2563eb', approved: '#16a34a', rejected: '#dc2626', info_requested: '#9333ea', sent: '#0891b2' };
+  const statusLabels = { draft: 'Draft', pending: 'Pending Review', submitted: 'Submitted', reviewed: 'Reviewed', approved: 'Approved', rejected: 'Rejected', info_requested: 'Info Requested', sent: 'Sent' };
 
   return (
     <div style={{ display: 'flex', gap: 20, maxWidth: 1320, margin: '0 auto', padding: 20 }}>
@@ -191,6 +191,39 @@ function BuilderContent() {
               <span style={{ fontSize: 9, fontWeight: 700, color: statusColors[approval.status], background: statusColors[approval.status] + '18', padding: '2px 8px', borderRadius: 10 }}>{statusLabels[approval.status] || 'Draft'}</span>
             </div>
             {isCorporate ? <div style={{ fontSize: 10, color: C.muted, fontStyle: 'italic' }}>Corporate — view only</div> :
+            /* Reviewer editing a submitted quote */
+            editQuoteId && user.role === 'reviewer' && (approval.status === 'pending' || approval.status === 'submitted') ? <div>
+              <div style={{ fontSize: 10, color: '#555', marginBottom: 8 }}>Review and approve this quote or request more info.</div>
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: C.muted, marginBottom: 3 }}>NOTE (optional)</div>
+                <input value={submitNote} onChange={e => setSubmitNote(e.target.value)} placeholder="Add a review note..." style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid ' + C.border, fontSize: 10, boxSizing: 'border-box' }} /></div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={async () => {
+                  try {
+                    await fetch('/api/quotes/' + editQuoteId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'review_approve', note: submitNote }) });
+                    alert('Quote approved to manager!'); window.location.href = '/quotes';
+                  } catch (e) { alert('Error: ' + e.message); }
+                }} style={{ flex: 1, padding: 8, borderRadius: 8, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: '#2563eb', color: '#fff' }}>Approve to Manager</button>
+                <button onClick={async () => {
+                  if (!submitNote) { alert('Please add a note explaining what info is needed'); return; }
+                  try {
+                    await fetch('/api/quotes/' + editQuoteId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'request_info', note: submitNote }) });
+                    alert('Info requested'); window.location.href = '/quotes';
+                  } catch (e) { alert('Error: ' + e.message); }
+                }} style={{ flex: 1, padding: 8, borderRadius: 8, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: '#9333ea', color: '#fff' }}>Request Info</button>
+              </div>
+            </div> :
+            /* Manager editing a reviewed quote */
+            editQuoteId && user.role === 'manager' && approval.status === 'reviewed' ? <div>
+              <div style={{ fontSize: 10, color: '#555', marginBottom: 8 }}>This quote is ready for your final approval.</div>
+              <button onClick={async () => {
+                try {
+                  await fetch('/api/quotes/' + editQuoteId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve' }) });
+                  alert('Quote approved!'); window.location.href = '/quotes';
+                } catch (e) { alert('Error: ' + e.message); }
+              }} style={{ width: '100%', padding: 8, borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: '#16a34a', color: '#fff' }}>Final Approve</button>
+            </div> :
+            /* Normal draft/info_requested flow */
             approval.status === 'draft' || approval.status === 'info_requested' ? <div>
               {approval.status === 'info_requested' && approval.infoNote && <div style={{ fontSize: 10, color: '#9333ea', background: '#f3e8ff', padding: '6px 10px', borderRadius: 6, marginBottom: 8 }}>Info requested: "{approval.infoNote}"</div>}
               <div style={{ marginBottom: 6 }}>
