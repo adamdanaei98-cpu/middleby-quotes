@@ -86,7 +86,7 @@ function BuilderContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const editQuoteId = searchParams.get('quoteId');
-  const { cats, sels, setSels, companies, customers, loading, mode, setMode, ci, setCi, approval, setApproval, tots, gt, terms, loadQuote } = useQuote();
+  const { cats, sels, setSels, companies, companyOrder, setCompanyOrder, customers, loading, mode, setMode, ci, setCi, approval, setApproval, tots, gt, terms, loadQuote } = useQuote();
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selReviewer, setSelReviewer] = useState('');
   const [selManager, setSelManager] = useState('');
@@ -94,7 +94,6 @@ function BuilderContent() {
   const [reviewers, setReviewers] = useState([]);
   const [managers, setManagers] = useState([]);
   const [activeCos, setActiveCos] = useState({});
-  const [companyOrder, setCompanyOrder] = useState([]);
   const [dragIdx, setDragIdx] = useState(null);
   const [quoteLoaded, setQuoteLoaded] = useState(false);
 

@@ -8,7 +8,7 @@ import { gP, itemDN, fP, fD, C, cTot } from '@/lib/transform';
 
 function MarginContent() {
   const { user } = useAuth();
-  const { cats, sels, companies, ci, loading, loadQuote } = useQuote();
+  const { cats, sels, companies, companyOrder, ci, loading, loadQuote } = useQuote();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
   const [quoteLoaded, setQuoteLoaded] = useState(false);
@@ -32,9 +32,13 @@ function MarginContent() {
   const pill = (mp) => <span style={{fontSize:10,fontWeight:700,color:mp>=40?'#16a34a':mp>=25?'#ca8a04':'#dc2626',background:(mp>=40?'#dcfce7':mp>=25?'#fef9c3':'#fef2f2'),padding:'2px 8px',borderRadius:10}}>{mp}%</span>;
   const kv = (l,v,bold,clr) => <div style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #f3f4f6'}}><span style={{fontSize:11,color:'#555'}}>{l}</span><span style={{fontSize:11,fontWeight:bold?800:600,color:clr||'#333'}}>{v}</span></div>;
 
-  // Build rows with overrides
+  // Build rows - follow companyOrder
   const secs=[]; let tMat=0,tLH=0,tLC=0,tPO=0,tList=0,t3rd=0;
-  Object.entries(cats).forEach(([k,cat])=>{
+  const orderedCatKeys = companyOrder.length > 0
+    ? companyOrder.filter(k => cats[k])
+    : Object.keys(cats).sort((a,b) => (companies[a]?.sortOrder||0) - (companies[b]?.sortOrder||0));
+  orderedCatKeys.forEach(k => {
+    const cat = cats[k];
     const co=companies[k]; if(!co)return; const rates=co.rates||{};
     Object.entries(cat).forEach(([sn,sec])=>{
       const rows=[]; (sec.items||[]).forEach(it=>{
