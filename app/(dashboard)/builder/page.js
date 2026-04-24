@@ -89,8 +89,10 @@ function BuilderContent() {
   const { cats, sels, setSels, companies, customers, loading, mode, setMode, ci, setCi, approval, setApproval, tots, gt, terms, loadQuote } = useQuote();
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selReviewer, setSelReviewer] = useState('');
+  const [selManager, setSelManager] = useState('');
   const [submitNote, setSubmitNote] = useState('');
   const [reviewers, setReviewers] = useState([]);
+  const [managers, setManagers] = useState([]);
   const [activeCos, setActiveCos] = useState({});
   const [quoteLoaded, setQuoteLoaded] = useState(false);
 
@@ -106,11 +108,14 @@ function BuilderContent() {
 
   useEffect(() => {
     fetch('/api/users').then(r => r.ok ? r.json() : {}).then(d => {
-      const allReviewers = (d.users || []).filter(u => u.role === 'reviewer');
-      // Filter to same company as current user (corporate sees all)
+      const allUsers = d.users || [];
       const myCoId = user?.primaryCompanyId;
-      const filtered = myCoId ? allReviewers.filter(u => u.primaryCompanyId === myCoId) : allReviewers;
-      setReviewers(filtered);
+      // Reviewers: same company, or all if corporate
+      const allReviewers = allUsers.filter(u => u.role === 'reviewer');
+      setReviewers(myCoId ? allReviewers.filter(u => u.primaryCompanyId === myCoId) : allReviewers);
+      // Managers: same company, or all if corporate
+      const allManagers = allUsers.filter(u => u.role === 'manager');
+      setManagers(myCoId ? allManagers.filter(u => u.primaryCompanyId === myCoId) : allManagers);
     }).catch(() => {});
   }, [user]);
 
@@ -195,15 +200,22 @@ function BuilderContent() {
             editQuoteId && user.role === 'reviewer' && (approval.status === 'pending' || approval.status === 'submitted') ? <div>
               <div style={{ fontSize: 10, color: '#555', marginBottom: 8 }}>Review and approve this quote or request more info.</div>
               <div style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: C.muted, marginBottom: 3 }}>SEND TO MANAGER</div>
+                <select value={selManager} onChange={e => setSelManager(e.target.value)} style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid ' + C.border, fontSize: 11, boxSizing: 'border-box', background: '#fff' }}>
+                  <option value="">Select manager...</option>
+                  {managers.map(u => <option key={u.id} value={u.id}>{u.name} — Manager</option>)}
+                </select></div>
+              <div style={{ marginBottom: 6 }}>
                 <div style={{ fontSize: 9, fontWeight: 700, color: C.muted, marginBottom: 3 }}>NOTE (optional)</div>
                 <input value={submitNote} onChange={e => setSubmitNote(e.target.value)} placeholder="Add a review note..." style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid ' + C.border, fontSize: 10, boxSizing: 'border-box' }} /></div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button onClick={async () => {
+                  if (!selManager) { alert('Please select a manager'); return; }
                   try {
-                    await fetch('/api/quotes/' + editQuoteId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'review_approve', note: submitNote }) });
+                    await fetch('/api/quotes/' + editQuoteId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'review_approve', note: submitNote, managerId: selManager }) });
                     alert('Quote approved to manager!'); window.location.href = '/quotes';
                   } catch (e) { alert('Error: ' + e.message); }
-                }} style={{ flex: 1, padding: 8, borderRadius: 8, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: '#2563eb', color: '#fff' }}>Approve to Manager</button>
+                }} disabled={!selManager} style={{ flex: 1, padding: 8, borderRadius: 8, border: 'none', fontSize: 11, fontWeight: 700, cursor: selManager ? 'pointer' : 'default', background: selManager ? '#2563eb' : '#e5e7eb', color: selManager ? '#fff' : '#aaa' }}>Approve to Manager</button>
                 <button onClick={async () => {
                   if (!submitNote) { alert('Please add a note explaining what info is needed'); return; }
                   try {
