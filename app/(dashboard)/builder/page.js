@@ -141,9 +141,9 @@ export default function BuilderPage() {
   return (
     <div>
       {/* Preview buttons centered under nav */}
-      <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: 10, padding: '8px 0' }}>
-        <button onClick={() => setPreviewModal('pdf')} style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid ' + C.navy, background: 'transparent', color: C.navy, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>PDF Preview</button>
-        <button onClick={() => setPreviewModal('margin')} style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid #059669', background: 'transparent', color: '#059669', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Margin Preview</button>
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '8px 0' }}>
+        <button onClick={() => setPreviewModal('pdf')} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid ' + C.navy, background: '#fff', color: C.navy, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View PDF</button>
+        <button onClick={() => setPreviewModal('margin')} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #059669', background: '#fff', color: '#059669', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View Margin</button>
       </div>
 
     <div style={{ display: 'flex', gap: 20, maxWidth: 1320, margin: '0 auto', padding: 20 }}>
@@ -468,5 +468,4 @@ function MarginPreview() {
       ])}</tbody>
     </table>
   </div>;
-}
 }
