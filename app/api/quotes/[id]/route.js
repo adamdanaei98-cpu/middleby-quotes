@@ -61,8 +61,17 @@ export async function PATCH(request, { params }) {
   }
 
   const updated = await db.quote.update({ where: { id: params.id }, data: update, include: { createdBy: { select: { name: true, email: true } } } });
-  // Add createdByName for email templates
   updated.createdByName = updated.createdBy?.name || '';
+
+  // Fetch company data for email templates
+  try {
+    const companies = await db.company.findMany({ select: { id: true, key: true, name: true, color: true } });
+    updated.companies = (updated.companyKeys || []).map(k => {
+      const co = companies.find(c => c.key === k);
+      return co ? { name: co.name, color: co.color } : { name: k, color: '#003250' };
+    });
+  } catch { updated.companies = []; }
+
   await db.auditLog.create({ data: { quoteId: params.id, userId: user.id, action, details: { note } } });
 
   // Send email notifications
