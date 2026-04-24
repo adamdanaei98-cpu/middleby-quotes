@@ -32,7 +32,13 @@ function PDFContent() {
   const activeCos = Object.keys(cats).filter(k => {
     const cat = cats[k]||{};
     return Object.values(cat).some(sec => (sec.items||[]).some(it => sels[k]?.[it.id]?.on));
-  });
+  }).sort((a,b) => (companies[a]?.sortOrder||0) - (companies[b]?.sortOrder||0));
+
+  // Wrap company name in hyperlink if websiteUrl exists
+  const coLink = (k, children, style={}) => {
+    const url = companies[k]?.websiteUrl;
+    return url ? <a href={url} target="_blank" rel="noopener noreferrer" style={{textDecoration:'none',color:'inherit',...style}}>{children}</a> : <span style={style}>{children}</span>;
+  };
 
   // Price with overrides
   const getP = (k, it, s) => {
@@ -117,7 +123,7 @@ function PDFContent() {
                   : <div style={{width:50,height:50,borderRadius:10,background:co.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:'#fff',flexShrink:0}}>{co.name[0]}</div>}
                 <div style={{flex:1}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
-                    <div style={{fontSize:15,fontWeight:700,color:co.color}}>{co.name}</div>
+                    {coLink(k, co.name, {fontSize:15,fontWeight:700,color:co.color})}
                     <div style={{fontSize:14,fontWeight:800,color:co.color}}>{fP(ct)}</div>
                   </div>
                   <div style={{fontSize:9,color:co.color,opacity:.7,marginBottom:4}}>{co.desc||''}</div>
@@ -147,7 +153,7 @@ function PDFContent() {
               {hdr}
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                 <div style={{width:4,height:26,borderRadius:2,background:co.color}} />
-                <div style={{fontSize:20,fontWeight:800,color:co.color}}>{co.name}</div>
+                {coLink(k, co.name, {fontSize:20,fontWeight:800,color:co.color})}
               </div>
               {co.machineImg&&<div style={{textAlign:'center',padding:14,background:'linear-gradient(135deg,#f8f9fb,#eef0f4)',borderRadius:10,marginBottom:14}}>
                 <img src={co.machineImg} style={{maxWidth:'100%',maxHeight:160,objectFit:'contain'}} /></div>}
@@ -184,7 +190,7 @@ function PDFContent() {
               })}
 
               <div style={{marginTop:12,borderTop:'2px solid '+co.color,paddingTop:8,display:'flex',justifyContent:'space-between'}}>
-                <span style={{fontSize:13,fontWeight:800,color:co.color}}>{co.name} Total</span>
+                {coLink(k, co.name + ' Total', {fontSize:13,fontWeight:800,color:co.color})}
                 <span style={{fontSize:13,fontWeight:800,color:co.color}}>{fP(ct)}</span>
               </div>
             </div>
@@ -204,7 +210,7 @@ function PDFContent() {
               const co = companies[k]; if (!co) return null;
               return (
                 <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #f3f4f6'}}>
-                  <span style={{fontSize:13,fontWeight:700,color:co.color}}>{co.name}</span>
+                  {coLink(k, co.name, {fontSize:13,fontWeight:700,color:co.color})}
                   <span style={{fontSize:13,fontWeight:700,color:'#333'}}>{fP(coTot(k))}</span>
                 </div>
               );

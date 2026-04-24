@@ -197,7 +197,7 @@ export default function AdminPage() {
   // Debounced save helpers
   const st = {};
   // Map local state field names to API field names
-  const apiFieldMap = { desc: 'description', machineImg: 'machineImage' };
+  const apiFieldMap = { desc: 'description', machineImg: 'machineImage', websiteUrl: 'websiteUrl' };
   const updCo = (k, f, v) => {
     const n = {...companies}; n[k] = {...n[k], [f]: v}; setCompanies(n);
     const cid = n[k]?.id; if (!cid) return;
@@ -283,6 +283,7 @@ export default function AdminPage() {
               <div style={{marginBottom:10}}><div style={lS}>MACHINE IMAGE</div>
                 {d.machineImg?<div style={{position:'relative'}}><img src={d.machineImg} style={{width:'100%',maxHeight:120,objectFit:'contain',background:'#f8f9fb',borderRadius:8}}/>{canEditCo(k)&&<button onClick={()=>updCo(k,'machineImg',null)} style={{position:'absolute',top:4,right:4,border:'none',background:'rgba(0,0,0,.5)',color:'#fff',borderRadius:10,width:20,height:20,cursor:'pointer',fontSize:10}}>{'\u00D7'}</button>}</div>
                 :canEditCo(k)?<button onClick={()=>pickFile('image/*',url=>updCo(k,'machineImg',url))} style={{padding:'8px 16px',border:'1px dashed '+d.color,background:'none',color:d.color,borderRadius:6,fontSize:11,cursor:'pointer'}}>Upload Machine Image</button>:<div style={{fontSize:11,color:C.muted,fontStyle:'italic'}}>No image</div>}</div>
+              <div style={{marginBottom:10}}><div style={lS}>WEBSITE URL</div><input value={d.websiteUrl||''} onChange={e=>updCo(k,'websiteUrl',e.target.value)} disabled={!canEditCo(k)} placeholder="https://www.example.com" style={{...iS,opacity:canEditCo(k)?1:.6}}/></div>
             </div>);})}
           {/* Add company */}
           <div style={{background:'#fff',borderRadius:12,border:'2px dashed '+C.border,padding:20}}>

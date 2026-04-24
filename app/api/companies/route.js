@@ -41,6 +41,8 @@ export async function PATCH(request) {
     if (data.logo !== undefined) updateData.logo = data.logo;
     if (data.machineImage !== undefined) updateData.machineImage = data.machineImage;
     if (data.division !== undefined) updateData.division = data.division;
+    if (data.websiteUrl !== undefined) updateData.websiteUrl = data.websiteUrl;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     const company = await db.company.update({ where: { id: data.id }, data: updateData });
     return NextResponse.json({ company });
   } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }

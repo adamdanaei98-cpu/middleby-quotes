@@ -63,6 +63,7 @@ model Company {
   execSummary  String?
   logo         String?
   machineImage String?
+  websiteUrl   String?
   rates        Json    @default("{}")
   division     String  @default("protein") // protein or bakery
   active       Boolean @default(true)

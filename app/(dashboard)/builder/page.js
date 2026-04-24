@@ -94,6 +94,8 @@ function BuilderContent() {
   const [reviewers, setReviewers] = useState([]);
   const [managers, setManagers] = useState([]);
   const [activeCos, setActiveCos] = useState({});
+  const [companyOrder, setCompanyOrder] = useState([]);
+  const [dragIdx, setDragIdx] = useState(null);
   const [quoteLoaded, setQuoteLoaded] = useState(false);
 
   const coKeys = Object.keys(companies);
@@ -105,6 +107,18 @@ function BuilderContent() {
       loadQuote(editQuoteId).then(() => setQuoteLoaded(true));
     }
   }, [editQuoteId, loading, quoteLoaded]);
+
+  // Initialize company order: user's company first, then by sortOrder
+  useEffect(() => {
+    if (coKeys.length > 0 && companyOrder.length === 0) {
+      const sorted = [...coKeys].sort((a, b) => {
+        if (a === userCoKey) return -1;
+        if (b === userCoKey) return 1;
+        return (companies[a]?.sortOrder || 0) - (companies[b]?.sortOrder || 0);
+      });
+      setCompanyOrder(sorted);
+    }
+  }, [coKeys.length]);
 
   useEffect(() => {
     fetch('/api/users').then(r => r.ok ? r.json() : {}).then(d => {
@@ -138,10 +152,11 @@ function BuilderContent() {
 
   const isCorporate = user.role === 'supervisor' || (user.role === 'it' && !user.primaryCompanyId) || (user.isAdmin && !user.primaryCompanyId);
 
-  // Which companies are visible?
+  // Which companies are visible (in user-defined order)?
+  const orderedKeys = companyOrder.length > 0 ? companyOrder : coKeys;
   const visibleCos = mode === 'individual'
-    ? (isCorporate ? [] : coKeys.filter(k => k === userCoKey)) // corporate sees nothing in individual
-    : coKeys.filter(k => activeCos[k]); // bundle: only toggled companies
+    ? (isCorporate ? [] : orderedKeys.filter(k => k === userCoKey))
+    : orderedKeys.filter(k => activeCos[k]);
 
   // Filtered tots for summary
   const visTots = tots.filter(([k]) => visibleCos.includes(k));
@@ -285,13 +300,27 @@ function BuilderContent() {
       </div>
       <div style={{ flex: 1 }}>
         {/* Company toggles for bundle mode */}
-        {mode === 'bundle' && coKeys.length > 1 && (
-          <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', padding: '10px 14px', background: '#fff', borderRadius: 10, border: '1px solid ' + C.border }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, alignSelf: 'center', marginRight: 4 }}>INCLUDE:</span>
-            {coKeys.map(k => {
+        {mode === 'bundle' && orderedKeys.length > 1 && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', padding: '10px 14px', background: '#fff', borderRadius: 10, border: '1px solid ' + C.border, alignItems: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, marginRight: 4 }}>INCLUDE:</span>
+            {orderedKeys.map((k, i) => {
               const co = companies[k]; const on = activeCos[k];
-              return <button key={k} onClick={() => setActiveCos(prev => ({ ...prev, [k]: !prev[k] }))} style={{ padding: '5px 14px', borderRadius: 6, border: '2px solid ' + co.color, cursor: 'pointer', fontSize: 11, fontWeight: 700, background: on ? co.color : 'transparent', color: on ? '#fff' : co.color, transition: 'all .15s' }}>{co.name}</button>;
+              return <button key={k} draggable
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={e => e.preventDefault()}
+                onDrop={() => {
+                  if (dragIdx === null || dragIdx === i) return;
+                  const newOrder = [...companyOrder.length > 0 ? companyOrder : coKeys];
+                  const [moved] = newOrder.splice(dragIdx, 1);
+                  newOrder.splice(i, 0, moved);
+                  setCompanyOrder(newOrder);
+                  setDragIdx(null);
+                }}
+                onDragEnd={() => setDragIdx(null)}
+                onClick={() => setActiveCos(prev => ({ ...prev, [k]: !prev[k] }))}
+                style={{ padding: '5px 14px', borderRadius: 6, border: '2px solid ' + co.color, cursor: 'grab', fontSize: 11, fontWeight: 700, background: on ? co.color : 'transparent', color: on ? '#fff' : co.color, transition: 'all .15s', opacity: dragIdx === i ? 0.4 : 1 }}>{co.name}</button>;
             })}
+            <span style={{ fontSize: 8, color: C.muted, marginLeft: 4 }}>Drag to reorder</span>
           </div>
         )}
         {mode === 'individual' && isCorporate && (
