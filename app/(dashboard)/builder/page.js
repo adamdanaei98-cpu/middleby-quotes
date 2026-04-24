@@ -177,11 +177,6 @@ export default function BuilderPage() {
               <span>Total</span><span>{fP(visGt)}</span>
             </div>
           </div>
-          {/* Preview buttons - navigate in same tab */}
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <button onClick={() => router.push('/pdf')} style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: '1px solid ' + C.navy, background: 'transparent', color: C.navy, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Preview PDF</button>
-            <button onClick={() => router.push('/margin')} style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: '1px solid #059669', background: 'transparent', color: '#059669', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Preview Margin</button>
-          </div>
           <div style={{ borderTop: '1px solid ' + C.border, paddingTop: 10, marginTop: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: C.navy, letterSpacing: '.06em' }}>APPROVAL</div>
