@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQuote } from '@/components/QuoteProvider';
 import { useAuth } from '@/components/AuthProvider';
 import { gP, cTot, fP, C } from '@/lib/transform';
@@ -81,18 +82,27 @@ function CatPanel({ label, color, cat, sel, setSel, bg2 }) {
   );
 }
 
-export default function BuilderPage() {
+function BuilderContent() {
   const { user } = useAuth();
-  const { cats, sels, setSels, companies, customers, loading, mode, setMode, ci, setCi, approval, setApproval, tots, gt, terms } = useQuote();
+  const searchParams = useSearchParams();
+  const editQuoteId = searchParams.get('quoteId');
+  const { cats, sels, setSels, companies, customers, loading, mode, setMode, ci, setCi, approval, setApproval, tots, gt, terms, loadQuote } = useQuote();
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selReviewer, setSelReviewer] = useState('');
   const [submitNote, setSubmitNote] = useState('');
   const [reviewers, setReviewers] = useState([]);
   const [activeCos, setActiveCos] = useState({});
+  const [quoteLoaded, setQuoteLoaded] = useState(false);
 
   const coKeys = Object.keys(companies);
-  // Find user's company key
   const userCoKey = coKeys.find(k => companies[k]?.id === user?.primaryCompanyId) || coKeys[0] || null;
+
+  // Load quote for editing if quoteId is in URL
+  useEffect(() => {
+    if (editQuoteId && !loading && !quoteLoaded) {
+      loadQuote(editQuoteId).then(() => setQuoteLoaded(true));
+    }
+  }, [editQuoteId, loading, quoteLoaded]);
 
   useEffect(() => {
     fetch('/api/users').then(r => r.ok ? r.json() : {}).then(d => {
@@ -262,4 +272,8 @@ export default function BuilderPage() {
       </div>
     </div>
   );
+}
+
+export default function BuilderPage() {
+  return <Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'calc(100vh - 56px)'}}><div style={{fontSize:16,color:'#8b919e'}}>Loading...</div></div>}><BuilderContent /></Suspense>;
 }

@@ -193,8 +193,11 @@ export default function QuotesPage() {
           <tbody>{filtered.map(q=>{const sc=STATUS[q.status]||STATUS.draft;
             const coNames=(q.companyKeys||[]).map(k=>{const c=allCompanies.find(x=>x.key===k);return c?{name:c.name,color:c.color}:null;}).filter(Boolean);
             const isChecked=checked.has(q.id);
+            const needsAction=(user.role==='reviewer'&&q.status==='submitted'&&q.reviewerId===user.id)||(user.role==='manager'&&q.status==='reviewed'&&q.managerId===user.id)||(q.status==='info_requested'&&q.createdById===user.id);
+            const rowBg=isChecked?'#f0f7ff':needsAction?'#fffbeb':'transparent';
             return(
-            <tr key={q.id} style={{borderBottom:'1px solid #f3f4f6',background:isChecked?'#f0f7ff':'transparent',cursor:'pointer'}} onMouseOver={e=>{if(!isChecked)e.currentTarget.style.background='#fafbfc';}} onMouseOut={e=>{if(!isChecked)e.currentTarget.style.background='transparent';}}>
+            <tr key={q.id} style={{borderBottom:'1px solid #f3f4f6',background:rowBg,cursor:'pointer'}} onMouseOver={e=>{if(!isChecked&&!needsAction)e.currentTarget.style.background='#fafbfc';}} onMouseOut={e=>{e.currentTarget.style.background=rowBg;}}>
+              {needsAction&&<td style={{padding:0,width:3}}><div style={{width:3,height:'100%',background:'#d97706',minHeight:40}} /></td>}
               <td style={{padding:'8px 12px'}}><input type="checkbox" checked={isChecked} onChange={e=>toggleCheck(q.id,e)} style={{cursor:'pointer'}} /></td>
               <td onClick={()=>openDetail(q.id)} style={{padding:'8px 12px',fontWeight:600,color:'#003250'}}>{q.quoteNumber}{q.revision>1?<span style={{fontSize:9,color:'#8b919e',marginLeft:4}}>R{q.revision}</span>:null}</td>
               <td onClick={()=>openDetail(q.id)} style={{padding:'8px 12px'}}><span style={{fontSize:10,fontWeight:700,color:sc.c,background:sc.bg,padding:'2px 8px',borderRadius:10}}>{sc.l}</span></td>
@@ -246,6 +249,7 @@ export default function QuotesPage() {
             <div style={{display:'flex',gap:8,marginBottom:16}}>
               <button onClick={()=>window.open('/pdf?quoteId='+detail.id,'_blank')} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'1px solid #003250',background:'#fff',color:'#003250',fontSize:12,fontWeight:700,cursor:'pointer'}}>View PDF</button>
               <button onClick={()=>window.open('/margin?quoteId='+detail.id,'_blank')} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'1px solid #059669',background:'#fff',color:'#059669',fontSize:12,fontWeight:700,cursor:'pointer'}}>View Margin</button>
+              {(user.role==='reviewer'||user.role==='manager'||user.isAdmin)&&detail.status!=='approved'&&detail.status!=='sent'&&<button onClick={()=>{setSelected(null);setDetail(null);window.location.href='/builder?quoteId='+detail.id;}} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'none',background:'#d97706',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>Edit Quote</button>}
             </div>
             {/* Visual Status Tracker */}
             <div style={{marginBottom:16,padding:'16px 16px',background:'#fff',border:'1px solid #e2e4e9',borderRadius:8}}>
