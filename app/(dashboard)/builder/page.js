@@ -1,9 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment, Suspense, lazy } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuote } from '@/components/QuoteProvider';
 import { useAuth } from '@/components/AuthProvider';
-import { gP, cTot, fP, C } from '@/lib/transform';
+import { gP, cTot, fP, C, itemDN } from '@/lib/transform';
 
 function Tog({ on, set, color }) {
   return (
@@ -91,6 +91,7 @@ export default function BuilderPage() {
   const [submitNote, setSubmitNote] = useState('');
   const [reviewers, setReviewers] = useState([]);
   const [activeCos, setActiveCos] = useState({}); // {companyKey: true/false} for bundle mode
+  const [previewModal, setPreviewModal] = useState(null); // 'pdf' or 'margin'
 
   const coKeys = Object.keys(companies);
   // Find user's company key
@@ -138,6 +139,13 @@ export default function BuilderPage() {
   const statusLabels = { draft: 'Draft', pending: 'Pending Review', approved: 'Approved', rejected: 'Rejected' };
 
   return (
+    <div>
+      {/* Preview buttons centered under nav */}
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: 10, padding: '8px 0' }}>
+        <button onClick={() => setPreviewModal('pdf')} style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid ' + C.navy, background: 'transparent', color: C.navy, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>PDF Preview</button>
+        <button onClick={() => setPreviewModal('margin')} style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid #059669', background: 'transparent', color: '#059669', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Margin Preview</button>
+      </div>
+
     <div style={{ display: 'flex', gap: 20, maxWidth: 1320, margin: '0 auto', padding: 20 }}>
       <div style={{ width: 280, flexShrink: 0 }}>
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid ' + C.border, padding: 16, position: 'sticky', top: 64 }}>
@@ -263,5 +271,202 @@ export default function BuilderPage() {
         })}
       </div>
     </div>
+
+    {/* Preview Modal */}
+    {previewModal && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200, overflow: 'auto' }} onClick={() => setPreviewModal(null)}>
+      <div style={{ maxWidth: previewModal === 'margin' ? 1200 : 900, margin: '20px auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 12, position: 'sticky', top: 10, zIndex: 10 }}>
+          <button onClick={() => setPreviewModal(null)} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#fff', color: '#666', fontSize: 12, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.2)' }}>✕ Close</button>
+          <button onClick={() => { setPreviewModal(null); window.setTimeout(() => { const el = document.getElementById('preview-print'); if (el) { const w = window.open('', '_blank'); w.document.write(el.innerHTML); w.document.close(); w.print(); } }, 100); }} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: C.navy, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.2)' }}>Save as PDF</button>
+        </div>
+        <div id="preview-print">
+          {previewModal === 'pdf' && <PDFPreview />}
+          {previewModal === 'margin' && <MarginPreview />}
+        </div>
+      </div>
+    </div>}
+    </div>
   );
+}
+
+// ═══ Inline PDF Preview Component ═══
+function PDFPreview() {
+  const { cats, sels, companies, ci, mode, terms, navLogo, pdfLogo } = useQuote();
+  const { user } = useAuth();
+
+  const activeCos = Object.keys(cats).filter(k => {
+    const cat = cats[k]||{};
+    return Object.values(cat).some(sec => (sec.items||[]).some(it => sels[k]?.[it.id]?.on));
+  });
+  let gt = 0;
+  activeCos.forEach(k => { gt += cTot(cats[k]||{}, sels[k]||{}).g; });
+
+  const stripe = <div style={{height:4,background:`linear-gradient(90deg,${C.navy} 40%,${C.blue} 40%,${C.blue} 70%,${C.red} 70%)`}} />;
+  const hdr = <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingBottom:8,borderBottom:'1px solid #eee',marginBottom:12}}>
+    <div style={{display:'flex',alignItems:'center',gap:8}}>
+      {pdfLogo ? <img src={pdfLogo} style={{height:18,objectFit:'contain'}} /> : <span style={{fontSize:11,fontWeight:800,color:C.navy,fontStyle:'italic'}}>MIDDLEBY</span>}
+      <span style={{fontSize:6.5,color:C.muted,letterSpacing:'.08em'}}>FOOD PROCESSING</span>
+    </div>
+    <span style={{fontSize:7.5,color:C.muted}}>{ci.proposalNumber||''}</span>
+  </div>;
+
+  if (activeCos.length === 0) return <div className="page-letter"><div className="page-content" style={{textAlign:'center',color:C.muted,paddingTop:60}}>Select items in the Builder first.</div></div>;
+
+  return <>
+    {/* Cover */}
+    <div className="page-letter">
+      <div className="page-stripe">{stripe}</div>
+      <div className="page-content">
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:24}}>
+          {pdfLogo ? <img src={pdfLogo} style={{height:36,objectFit:'contain'}} /> : <span style={{fontSize:26,fontWeight:800,color:C.navy,fontStyle:'italic'}}>MIDDLEBY</span>}
+          <span style={{fontSize:8,color:C.muted,letterSpacing:'.1em'}}>FOOD PROCESSING</span>
+        </div>
+        <div style={{fontSize:26,fontWeight:800,color:C.navy,marginBottom:4}}>Equipment Proposal</div>
+        <div style={{fontSize:15,fontWeight:600,color:C.navy,marginBottom:24}}>{mode==='bundle'?'Complete Line Solution':'Individual Quote'} for {ci.name||'Customer'}</div>
+        {(ci.name||ci.contact)&&<div style={{background:'#f8f9fb',borderRadius:8,padding:'14px 18px',marginBottom:20,border:'1px solid #eef0f2'}}>
+          <div style={{fontSize:8,fontWeight:700,color:C.muted,letterSpacing:'.06em',marginBottom:4}}>PREPARED FOR</div>
+          <div style={{fontSize:17,fontWeight:700,color:C.navy}}>{ci.name||'—'}</div>
+          {ci.contact&&<div style={{fontSize:11,color:'#555',marginTop:3}}>Attn: {ci.contact}</div>}
+        </div>}
+        <div style={{display:'flex',gap:30,fontSize:10,color:C.muted,marginBottom:24}}>
+          <div><strong>Proposal #:</strong> {ci.proposalNumber||'—'}</div>
+          <div><strong>Rev:</strong> {ci.revision||'1'}</div>
+          <div><strong>Date:</strong> {new Date().toLocaleDateString()}</div>
+        </div>
+        <div style={{height:2,background:C.navy,marginBottom:20}} />
+        {activeCos.map(k => {
+          const co = companies[k]; if (!co) return null;
+          const ct = cTot(cats[k]||{}, sels[k]||{}).g;
+          return <div key={k} style={{display:'flex',gap:16,padding:'14px 16px',marginBottom:10,borderRadius:10,border:'1px solid '+co.color+'30',background:co.color+'06'}}>
+            {co.machineImg ? <img src={co.machineImg} style={{width:100,height:70,objectFit:'contain',borderRadius:6,background:'#f8f9fb',flexShrink:0}} />
+              : <div style={{width:50,height:50,borderRadius:10,background:co.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:'#fff',flexShrink:0}}>{co.name[0]}</div>}
+            <div style={{flex:1}}>
+              <div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:15,fontWeight:700,color:co.color}}>{co.name}</span><span style={{fontSize:14,fontWeight:800,color:co.color}}>{fP(ct)}</span></div>
+              <div style={{fontSize:9,color:co.color,opacity:.7}}>{co.desc||''}</div>
+              {co.execSummary&&<div style={{fontSize:8.5,lineHeight:1.5,color:'#555',marginTop:4}}>{co.execSummary}</div>}
+            </div>
+          </div>;
+        })}
+        <div style={{marginTop:16,borderTop:'3px double '+C.navy,paddingTop:12,display:'flex',justifyContent:'space-between'}}>
+          <span style={{fontSize:16,fontWeight:800,color:C.navy}}>{mode==='bundle'?'Bundle Total':'Total'}</span>
+          <span style={{fontSize:16,fontWeight:800,color:C.navy}}>{fP(gt)}</span>
+        </div>
+      </div>
+      <div className="page-stripe">{stripe}</div>
+    </div>
+
+    {/* Company pages */}
+    {activeCos.map(k => {
+      const co = companies[k]; if (!co) return null;
+      const cat = cats[k]||{}; const ct = cTot(cat, sels[k]||{}).g;
+      return <div key={k} className="page-letter">
+        <div className="page-stripe">{stripe}</div>
+        <div className="page-content">
+          {hdr}
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+            <div style={{width:4,height:26,borderRadius:2,background:co.color}} />
+            <div style={{fontSize:20,fontWeight:800,color:co.color}}>{co.name}</div>
+          </div>
+          {co.machineImg&&<div style={{textAlign:'center',padding:14,background:'linear-gradient(135deg,#f8f9fb,#eef0f4)',borderRadius:10,marginBottom:14}}><img src={co.machineImg} style={{maxWidth:'100%',maxHeight:160,objectFit:'contain'}} /></div>}
+          {co.execSummary&&<div style={{fontSize:9.5,lineHeight:1.6,color:'#444',marginBottom:14,padding:'10px 14px',background:'#fafbfc',borderRadius:6,borderLeft:'3px solid '+co.color}}>{co.execSummary}</div>}
+          {Object.entries(cat).map(([sn, sec]) => {
+            const items = (sec.items||[]).filter(it => { const s = sels[k]?.[it.id]; return s?.on && (gP(it,s)>0||(it.hq&&s.q>0)); });
+            if (!items.length) return null;
+            return <div key={sn} style={{marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:700,color:co.color,marginBottom:4,paddingBottom:3,borderBottom:'1px solid '+co.color+'30'}}>{sn}</div>
+              {items.map(it => { const s=sels[k][it.id]; const pr=gP(it,s); const dn=itemDN(it,s);
+                return <div key={it.id} style={{padding:'4px 0 3px 8px',borderBottom:'1px solid #f3f4f6'}}>
+                  <div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:10.5,fontWeight:600,color:'#333'}}>{dn}{it.hq&&s.q>0?' — Qty. '+s.q:''}</span><span style={{fontSize:10.5,fontWeight:700,color:co.color}}>{fP(pr)}</span></div>
+                </div>;
+              })}
+            </div>;
+          })}
+          <div style={{marginTop:12,borderTop:'2px solid '+co.color,paddingTop:8,display:'flex',justifyContent:'space-between'}}>
+            <span style={{fontSize:13,fontWeight:800,color:co.color}}>{co.name} Total</span>
+            <span style={{fontSize:13,fontWeight:800,color:co.color}}>{fP(ct)}</span>
+          </div>
+        </div>
+        <div className="page-stripe">{stripe}</div>
+      </div>;
+    })}
+
+    {/* Summary */}
+    <div className="page-letter">
+      <div className="page-stripe">{stripe}</div>
+      <div className="page-content">
+        {hdr}
+        <div style={{fontSize:20,fontWeight:800,color:C.navy,marginBottom:20}}>Price Summary</div>
+        <div style={{maxWidth:420}}>
+          {activeCos.map(k => { const co=companies[k]; return co?<div key={k} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #f3f4f6'}}><span style={{fontSize:13,fontWeight:700,color:co.color}}>{co.name}</span><span style={{fontSize:13,fontWeight:700,color:'#333'}}>{fP(cTot(cats[k]||{},sels[k]||{}).g)}</span></div>:null; })}
+          <div style={{display:'flex',justifyContent:'space-between',padding:'14px 0',marginTop:6,borderTop:'3px double '+C.navy}}>
+            <span style={{fontSize:18,fontWeight:800,color:C.navy}}>{mode==='bundle'?'BUNDLE TOTAL:':'TOTAL:'}</span>
+            <span style={{fontSize:18,fontWeight:800,color:C.navy}}>{fP(gt)}</span>
+          </div>
+        </div>
+      </div>
+      <div className="page-stripe">{stripe}</div>
+    </div>
+  </>;
+}
+
+// ═══ Inline Margin Preview Component ═══
+function MarginPreview() {
+  const { cats, sels, companies, ci } = useQuote();
+  const fD = n => '$'+Math.round(n||0).toLocaleString('en-US');
+  const pill = mp => <span style={{fontSize:10,fontWeight:700,color:mp>=40?'#16a34a':mp>=25?'#ca8a04':'#dc2626',background:(mp>=40?'#dcfce7':mp>=25?'#fef9c3':'#fef2f2'),padding:'2px 8px',borderRadius:10}}>{mp}%</span>;
+
+  const secs=[]; let tMat=0,tLH=0,tLC=0,tPO=0,tList=0,t3rd=0;
+  Object.entries(cats).forEach(([k,cat])=>{
+    const co=companies[k]; if(!co)return; const rates=co.rates||{};
+    Object.entries(cat).forEach(([sn,sec])=>{
+      const rows=[]; (sec.items||[]).forEach(it=>{
+        const s=(sels[k]||{})[it.id]; if(!s||!s.on)return;
+        const q=it.hq&&s.q>0?s.q:1; const mat=(it.mc||0)*q; const lh=(it.lh||0)*q;
+        const lc=Math.round(lh*(rates.laborRate||30)); const po=Math.round(lc*(rates.pohr||2)); const cost=mat+lc+po;
+        let lp=gP(it,s); const is3=sn.toLowerCase().includes('3rd');
+        if(!is3)lp=Math.round(lp*(1+(rates.markup||10)/100));
+        const mg=lp-cost; const mp=lp>0?Math.round(mg/lp*100):0;
+        rows.push({dn:itemDN(it,s),q,mat,lh,lc,po,cost,lp,mg,mp});
+        tMat+=mat;tLH+=lh;tLC+=lc;tPO+=po;tList+=lp;if(is3)t3rd+=lp;
+      });
+      if(rows.length>0)secs.push({co:co.name,color:co.color,sn,rows});
+    });
+  });
+
+  const manC=tMat+tLC+tPO; const mRev=tList-manC; const mPct=tList>0?Math.round(mRev/tList*100):0;
+
+  if(secs.length===0) return <div style={{background:'#fff',borderRadius:12,padding:40,textAlign:'center',color:C.muted}}>Select items in the Builder first.</div>;
+
+  return <div style={{background:'#fff',borderRadius:12,padding:24}}>
+    <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
+      <div><div style={{fontSize:18,fontWeight:800,color:C.navy}}>Margin Calculator</div><div style={{fontSize:11,color:C.muted}}>{ci.name} • Rev. {ci.revision}</div></div>
+      <div style={{fontSize:9,color:'#dc2626',fontWeight:700,background:'#fef2f2',padding:'4px 12px',borderRadius:6,alignSelf:'flex-start'}}>CONFIDENTIAL</div>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:12,marginBottom:20}}>
+      {[{l:'Total List Price',v:fP(tList),c:C.navy},{l:'Manufacturing Cost',v:fD(manC),c:'#64748b'},{l:'Margin Revenue',v:fD(mRev),c:mPct>=40?'#16a34a':'#ca8a04'},{l:'Gross Margin',v:mPct+'%',c:mPct>=40?'#16a34a':'#ca8a04'}].map((kpi,i)=>
+        <div key={i} style={{background:'#f8f9fb',borderRadius:10,padding:'14px 16px',borderTop:'3px solid '+kpi.c}}>
+          <div style={{fontSize:9,fontWeight:700,color:C.muted}}>{kpi.l}</div>
+          <div style={{fontSize:20,fontWeight:800,color:kpi.c,marginTop:4}}>{kpi.v}</div>
+        </div>)}
+    </div>
+    <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+      <thead><tr style={{background:'#f8f9fb'}}>{['Item','Qty','Material','Hrs','Labor $','POHR','Cost','List','Margin','M%'].map(h=><th key={h} style={{padding:'7px 10px',textAlign:h==='Item'?'left':'right',fontSize:8,fontWeight:700,color:C.muted,borderBottom:'1px solid #e2e4e9'}}>{h}</th>)}</tr></thead>
+      <tbody>{secs.map((sec,si)=>[
+        <tr key={'h'+si} style={{background:sec.color+'08'}}><td colSpan={10} style={{padding:'8px 10px',fontWeight:700,color:sec.color,fontSize:11}}>{sec.co} — {sec.sn}</td></tr>,
+        ...sec.rows.map((r,ri)=><tr key={'r'+si+ri} style={{borderBottom:'1px solid #f3f4f6'}}>
+          <td style={{padding:'5px 10px',color:'#444'}}>{r.dn}</td>
+          <td style={{padding:'5px 10px',textAlign:'center',color:C.muted}}>{r.q}</td>
+          <td style={{padding:'5px 10px',textAlign:'right',color:'#888'}}>{fD(r.mat)}</td>
+          <td style={{padding:'5px 10px',textAlign:'right',color:'#888'}}>{r.lh.toFixed(1)}</td>
+          <td style={{padding:'5px 10px',textAlign:'right',color:'#888'}}>{fD(r.lc)}</td>
+          <td style={{padding:'5px 10px',textAlign:'right',color:'#888'}}>{fD(r.po)}</td>
+          <td style={{padding:'5px 10px',textAlign:'right',fontWeight:500}}>{fD(r.cost)}</td>
+          <td style={{padding:'5px 10px',textAlign:'right',fontWeight:600,color:sec.color}}>{fD(r.lp)}</td>
+          <td style={{padding:'5px 10px',textAlign:'right',fontWeight:500,color:r.mp>=40?'#16a34a':r.mp>=25?'#ca8a04':'#dc2626'}}>{fD(r.mg)}</td>
+          <td style={{padding:'5px 10px',textAlign:'right'}}>{pill(r.mp)}</td>
+        </tr>)
+      ])}</tbody>
+    </table>
+  </div>;
+}
 }
