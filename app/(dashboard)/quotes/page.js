@@ -22,9 +22,18 @@ export default function QuotesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState(null); // detail modal
+  const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [seenQuotes, setSeenQuotes] = useState(new Set());
+  const [seenQuotes, setSeenQuotes] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('seenQuotes') || '[]')); } catch { return new Set(); }
+  });
+  const markSeen = (id) => {
+    setSeenQuotes(prev => {
+      const n = new Set(prev); n.add(id);
+      try { localStorage.setItem('seenQuotes', JSON.stringify([...n])); } catch {}
+      return n;
+    });
+  };
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [actionNote, setActionNote] = useState('');
   const [acting, setActing] = useState(false);
@@ -55,7 +64,7 @@ export default function QuotesPage() {
 
   const openDetail = async (quoteId) => {
     setSelected(quoteId); setLoadingDetail(true); setActionNote('');
-    setSeenQuotes(prev => { const n = new Set(prev); n.add(quoteId); return n; });
+    markSeen(quoteId);
     const res = await fetch('/api/quotes/'+quoteId);
     if (res.ok) { const d = await res.json(); setDetail(d.quote); }
     setLoadingDetail(false);

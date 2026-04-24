@@ -56,6 +56,14 @@ export function QuoteProvider({ children }) {
         revision: String(quote.revision || 1),
         purpose: quote.purpose || '',
       });
+      setApproval({
+        status: quote.status || 'draft',
+        reviewer: quote.reviewerId || null,
+        submittedAt: quote.submittedAt ? new Date(quote.submittedAt).toLocaleString() : null,
+        note: quote.submitNote || '',
+        quoteId: quote.id,
+        infoNote: quote.infoRequestNote || '',
+      });
       if (quote.terms) setTerms(quote.terms);
       return true;
     } catch (e) { console.error('loadQuote failed:', e); return false; }

@@ -23,17 +23,19 @@ export default function NavBar() {
   useEffect(() => {
     if (!user) return;
     const fetchPending = () => {
+      let seen = new Set();
+      try { seen = new Set(JSON.parse(localStorage.getItem('seenQuotes') || '[]')); } catch {}
       fetch('/api/quotes').then(r => r.ok ? r.json() : { quotes: [] }).then(d => {
         const quotes = d.quotes || [];
         let count = 0;
-        if (user.role === 'reviewer') count = quotes.filter(q => q.status === 'submitted' && q.reviewerId === user.id).length;
-        else if (user.role === 'manager') count = quotes.filter(q => q.status === 'reviewed' && q.managerId === user.id).length;
-        else if (user.role === 'salesperson') count = quotes.filter(q => q.status === 'info_requested' && q.createdById === user.id).length;
+        if (user.role === 'reviewer') count = quotes.filter(q => q.status === 'submitted' && q.reviewerId === user.id && !seen.has(q.id)).length;
+        else if (user.role === 'manager') count = quotes.filter(q => q.status === 'reviewed' && q.managerId === user.id && !seen.has(q.id)).length;
+        else if (user.role === 'salesperson') count = quotes.filter(q => q.status === 'info_requested' && q.createdById === user.id && !seen.has(q.id)).length;
         setPendingCount(count);
       }).catch(() => {});
     };
     fetchPending();
-    const interval = setInterval(fetchPending, 30000); // refresh every 30s
+    const interval = setInterval(fetchPending, 30000);
     return () => clearInterval(interval);
   }, [user]);
 
