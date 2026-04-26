@@ -10,6 +10,7 @@ const NAV = [
   { id: '/pdf', l: 'PDF' },
   { id: '/margin', l: 'Margin' },
   { id: '/quotes', l: 'Quotes' },
+  { id: '/field-map', l: 'Field Map' },
 ];
 
 export default function NavBar() {

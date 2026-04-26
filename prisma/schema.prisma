@@ -51,6 +51,7 @@ model User {
   reviewedQuotes  Quote[]    @relation("ReviewedBy")
   approvedQuotes  Quote[]    @relation("ApprovedBy")
   auditLogs       AuditLog[]
+  fieldMapCustomers CustomerFieldMapRep[]
 }
 
 // ─── COMPANIES ────────────────────────────────────────────────
@@ -75,6 +76,7 @@ model Company {
   additionalUsers  CompanyUser[]
   catalogSections  CatalogSection[]
   customers        Customer[]
+  primaryCustomers Customer[]       @relation("CustomerPrimaryCompany")
 }
 
 model CompanyUser {
@@ -104,7 +106,45 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  quotes Quote[]
+  // Field map fields
+  lat              Float?
+  lng              Float?
+  city             String?
+  state            String?
+  country          String?
+  concept          String?  // industry/concept
+  primaryCompanyId String?
+  primaryCompany   Company? @relation("CustomerPrimaryCompany", fields: [primaryCompanyId], references: [id])
+
+  quotes       Quote[]
+  equipment    Equipment[]
+  fieldMapReps CustomerFieldMapRep[]
+}
+
+// ─── FIELD MAP: EQUIPMENT ─────────────────────────────────────
+model Equipment {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  model      String
+  serial     String?
+  year       Int?
+  status     String   @default("active") // active, service, idle
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ─── FIELD MAP: CUSTOMER-REP JOIN ─────────────────────────────
+model CustomerFieldMapRep {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, userId])
 }
 
 // ─── CATALOG ──────────────────────────────────────────────────
