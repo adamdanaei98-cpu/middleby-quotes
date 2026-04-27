@@ -52,6 +52,7 @@ model User {
   approvedQuotes  Quote[]    @relation("ApprovedBy")
   auditLogs       AuditLog[]
   fieldMapCustomers CustomerFieldMapRep[]
+  visits            Visit[]
 }
 
 // ─── COMPANIES ────────────────────────────────────────────────
@@ -96,6 +97,7 @@ model Customer {
   plant     String?
   address   String?
   contact   String?
+  contactRole String?
   email     String?
   phone     String?
   keywords  String[] @default([])
@@ -119,6 +121,7 @@ model Customer {
   quotes       Quote[]
   equipment    Equipment[]
   fieldMapReps CustomerFieldMapRep[]
+  visits       Visit[]
 }
 
 // ─── FIELD MAP: EQUIPMENT ─────────────────────────────────────
@@ -145,6 +148,20 @@ model CustomerFieldMapRep {
   createdAt  DateTime @default(now())
 
   @@unique([customerId, userId])
+}
+
+// ─── FIELD MAP: VISITS ────────────────────────────────────────
+model Visit {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String   @default("in_person") // in_person, phone, email, virtual
+  notes      String?
+  followUpDate DateTime?
+  visitDate  DateTime @default(now())
+  createdAt  DateTime @default(now())
 }
 
 // ─── CATALOG ──────────────────────────────────────────────────

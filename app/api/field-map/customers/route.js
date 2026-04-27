@@ -12,6 +12,7 @@ export async function GET() {
       company: { select: { id: true, key: true, name: true, color: true } },
       equipment: true,
       fieldMapReps: { include: { user: { select: { id: true, name: true, email: true, role: true, primaryCompanyId: true, primaryCompany: { select: { name: true, color: true } } } } } },
+      visits: { orderBy: { visitDate: 'desc' }, take: 1, include: { user: { select: { name: true } } } },
     },
     orderBy: { name: 'asc' },
   });
@@ -30,6 +31,7 @@ export async function POST(request) {
         plant: data.plant || null,
         address: data.address || null,
         contact: data.contact || null,
+        contactRole: data.contactRole || null,
         email: data.email || null,
         phone: data.phone || null,
         city: data.city || null,

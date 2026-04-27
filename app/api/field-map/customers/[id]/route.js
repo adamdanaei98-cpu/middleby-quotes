@@ -19,6 +19,7 @@ export async function PUT(request, { params }) {
           plant: data.plant || null,
           address: data.address || null,
           contact: data.contact || null,
+          contactRole: data.contactRole || null,
           email: data.email || null,
           phone: data.phone || null,
           city: data.city || null,
