@@ -234,16 +234,14 @@ export default function AdminPage() {
   };
   const saveCust = async (data, isNew) => {
     setErr('');try{
-      // Save basic fields through existing API
-      const basicData = { id: data.id, name: data.name, plant: data.plant, address: data.address, contact: data.contact, email: data.email, phone: data.phone, keywords: data.keywords, notes: data.notes, companyId: data.companyId };
+      // Save basic fields
+      const basicData = { id: data.id, name: data.name, plant: data.plant, address: data.address, contact: data.contact, email: data.email, phone: data.phone, keywords: data.keywords, notes: data.notes, companyId: data.companyId, active: data.active !== false };
       const r=await fetch('/api/customers',{method:isNew?'POST':'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(basicData)});const d=await r.json();if(!r.ok){setErr(d.error);return;}
       const custId = isNew ? d.customer.id : data.id;
-      // Save extended fields (contacts, plants, equipment) through field-map API
-      if (data.contacts?.length || data.plants?.length || data.equipment?.length || data.city || data.concept) {
-        const extData = { ...data, name: data.name };
-        await fetch('/api/field-map/customers/' + custId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(extData) });
-      }
-      if(isNew)setCustomers(p=>[...p,d.customer]);else setCustomers(p=>p.map(c=>c.id===d.customer.id?{...d.customer,...data}:c));setShowModal(null);setOk(isNew?'Customer added':'Customer updated');setTimeout(()=>setOk(''),3000);}catch(e){setErr(e.message);}
+      // Always save extended fields through field-map API
+      const extData = { ...data, name: data.name, id: custId };
+      try { await fetch('/api/field-map/customers/' + custId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(extData) }); } catch {}
+      if(isNew)setCustomers(p=>[...p,d.customer]);else setCustomers(p=>p.map(c=>c.id===custId?{...d.customer,...data}:c));setShowModal(null);setOk(isNew?'Customer added':'Customer updated');setTimeout(()=>setOk(''),3000);}catch(e){setErr(e.message);}
   };
 
   const TB=({id,l})=><button onClick={()=>setTab(id)} style={{padding:'7px 14px',borderRadius:6,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,background:tab===id?'#fff':'transparent',color:tab===id?C.navy:'#888',boxShadow:tab===id?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>;
@@ -512,7 +510,7 @@ export default function AdminPage() {
       })()}
 
       {/* ═══ UNIVERSAL MODAL ═══ */}
-      {showModal&&<div className="modal-overlay" onClick={()=>setShowModal(null)}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:(showModal==='addCust'||showModal==='editCust')?680:500}}>
+      {showModal&&<div className="modal-overlay" onClick={()=>setShowModal(null)}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:(showModal==='addCust'||showModal==='editCust')?780:500}}>
         <div style={{fontSize:17,fontWeight:800,color:'#003250',marginBottom:16}}>{showModal==='addUser'?'Add User':showModal==='editUser'?'Edit User':showModal==='addCust'?'Add Customer':'Edit Customer'}</div>
 
         {(showModal==='addUser'||showModal==='editUser')&&<div>
@@ -537,46 +535,47 @@ export default function AdminPage() {
         {(showModal==='addCust'||showModal==='editCust')&&<div>
           {/* ── Customer Details ── */}
           <div style={{fontSize:12,fontWeight:700,color:'#003250',marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040'}}>CUSTOMER DETAILS</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:8,marginBottom:12}}>
             <div><label style={lS}>CUSTOMER NAME *</label><input value={modalData.name||''} onChange={e=>setModalData({...modalData,name:e.target.value})} placeholder="e.g. Hormel Foods" list="adminCustNames" style={iS}/><datalist id="adminCustNames">{[...new Set(customers.map(c=>c.name))].sort().map(n=><option key={n} value={n}/>)}</datalist></div>
-            <div><label style={lS}>INDUSTRY / CONCEPT</label><input value={modalData.concept||''} onChange={e=>setModalData({...modalData,concept:e.target.value})} placeholder="e.g. Meat Processing" style={iS}/></div>
+            <div><label style={lS}>INDUSTRY / CONCEPT</label><input value={modalData.concept||''} onChange={e=>setModalData({...modalData,concept:e.target.value})} placeholder="Meat Processing" style={iS}/></div>
+            <div><label style={lS}>STATUS</label><select value={modalData.active===false?'inactive':'active'} onChange={e=>setModalData({...modalData,active:e.target.value==='active'})} style={iS}><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
           </div>
-          <div style={{marginBottom:8}}><label style={lS}>KEYWORDS</label>
-            <div style={{display:'flex',flexWrap:'wrap',gap:4,padding:'6px 8px',border:'1px solid #e2e4e9',borderRadius:6,minHeight:34,alignItems:'center'}}>
-              {(modalData.keywords||[]).map((kw,i)=><span key={i} style={{fontSize:10,background:'#e0e7ff',color:'#3b5998',padding:'2px 8px',borderRadius:4,display:'flex',alignItems:'center',gap:4}}>{kw}<button onClick={()=>setModalData({...modalData,keywords:(modalData.keywords||[]).filter((_,j)=>j!==i)})} style={{border:'none',background:'none',color:'#3b5998',cursor:'pointer',fontSize:12,padding:0}}>x</button></span>)}
-              <input placeholder="Type & press Enter..." onKeyDown={e=>{if(e.key==='Enter'||e.key===','){e.preventDefault();e.stopPropagation();const v=e.target.value.trim();if(v){setModalData(p=>({...p,keywords:[...(p.keywords||[]),v]}));e.target.value='';}}}} style={{border:'none',outline:'none',fontSize:11,flex:1,minWidth:100,padding:'2px 0'}}/>
-            </div>
-          </div>
-          <div style={{marginBottom:12}}><label style={lS}>NOTES</label><textarea value={modalData.notes||''} onChange={e=>setModalData({...modalData,notes:e.target.value})} rows={2} style={{...iS,fontFamily:'inherit',resize:'vertical'}}/></div>
 
           {/* ── Plants / Locations ── */}
           <div style={{fontSize:12,fontWeight:700,color:'#003250',marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040',display:'flex',justifyContent:'space-between'}}>
             <span>PLANTS / LOCATIONS</span>
-            <button onClick={()=>setModalData(p=>({...p,plants:[...(p.plants||[]),{name:'',address:'',city:'',state:'',country:''}]}))} style={{padding:'2px 8px',borderRadius:4,border:'1px dashed #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>+ Add Plant</button>
+            <button onClick={()=>setModalData(p=>({...p,plants:[...(p.plants||[]),{name:'',address:'',city:'',state:'',country:'',lat:'',lng:''}]}))} style={{padding:'2px 8px',borderRadius:4,border:'1px dashed #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>+ Add Plant</button>
           </div>
-          <div style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:8,border:'1px solid #eef0f2'}}>
-            <div style={{fontSize:10,fontWeight:600,color:'#8b919e',marginBottom:4}}>Main Address</div>
+          {/* Main address */}
+          <div style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:6,border:'1px solid #eef0f2'}}>
+            <div style={{fontSize:10,fontWeight:600,color:'#8b919e',marginBottom:4}}>Main Address (HQ)</div>
             <div style={{display:'flex',gap:6,marginBottom:6}}>
               <input value={modalData.address||''} onChange={e=>setModalData({...modalData,address:e.target.value})} placeholder="Street address" style={{...iS,flex:1}}/>
               <button onClick={async()=>{const a=[modalData.address,modalData.city,modalData.state,modalData.country].filter(Boolean).join(', ');if(!a)return;try{const r=await fetch('/api/field-map/geocode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:a})});if(r.ok){const d=await r.json();setModalData(p=>({...p,lat:d.lat,lng:d.lng}));}else alert('Not found');}catch{alert('Geocode failed');}}} style={{padding:'6px 10px',borderRadius:6,border:'1px solid #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>📍 Lookup</button>
             </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:6}}>
               <div><label style={lS}>CITY</label><input value={modalData.city||''} onChange={e=>setModalData({...modalData,city:e.target.value})} style={iS}/></div>
               <div><label style={lS}>STATE</label><input value={modalData.state||''} onChange={e=>setModalData({...modalData,state:e.target.value})} style={iS}/></div>
               <div><label style={lS}>COUNTRY</label><input value={modalData.country||''} onChange={e=>setModalData({...modalData,country:e.target.value})} style={iS}/></div>
+              <div><label style={lS}>LAT</label><input type="number" step="any" value={modalData.lat||''} onChange={e=>setModalData({...modalData,lat:e.target.value})} style={iS}/></div>
+              <div><label style={lS}>LNG</label><input type="number" step="any" value={modalData.lng||''} onChange={e=>setModalData({...modalData,lng:e.target.value})} style={iS}/></div>
             </div>
           </div>
+          {/* Sub-plants */}
           {(modalData.plants||[]).map((pl,i)=>(
             <div key={i} style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:4,border:'1px solid #eef0f2',position:'relative'}}>
               <button onClick={()=>{const pls=[...(modalData.plants||[])];pls.splice(i,1);setModalData(p=>({...p,plants:pls}));}} style={{position:'absolute',top:6,right:8,border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:14}}>x</button>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:6,marginBottom:4}}>
-                <div><label style={lS}>PLANT NAME</label><input value={pl.name||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],name:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
+              <div style={{display:'grid',gridTemplateColumns:'1.5fr 2.5fr auto',gap:6,marginBottom:4}}>
+                <div><label style={lS}>PLANT NAME</label><input value={pl.name||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],name:e.target.value};setModalData(p=>({...p,plants:pls}));}} list={'plantNames'+i} placeholder="e.g. Sioux City" style={iS}/><datalist id={'plantNames'+i}>{[...new Set(customers.flatMap(c=>(c.plants||[]).map(p=>p.name)).filter(Boolean))].sort().map(n=><option key={n} value={n}/>)}</datalist></div>
                 <div><label style={lS}>ADDRESS</label><input value={pl.address||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],address:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
+                <div style={{alignSelf:'flex-end'}}><button onClick={async()=>{const a=[pl.address,pl.city,pl.state,pl.country].filter(Boolean).join(', ');if(!a)return;try{const r=await fetch('/api/field-map/geocode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:a})});if(r.ok){const d=await r.json();const pls=[...(modalData.plants||[])];pls[i]={...pls[i],lat:d.lat,lng:d.lng};setModalData(p=>({...p,plants:pls}));}else alert('Not found');}catch{alert('Failed');}}} style={{padding:'6px 8px',borderRadius:6,border:'1px solid #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>📍</button></div>
               </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:6}}>
                 <div><label style={lS}>CITY</label><input value={pl.city||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],city:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
                 <div><label style={lS}>STATE</label><input value={pl.state||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],state:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
                 <div><label style={lS}>COUNTRY</label><input value={pl.country||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],country:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
+                <div><label style={lS}>LAT</label><input type="number" step="any" value={pl.lat||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],lat:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
+                <div><label style={lS}>LNG</label><input type="number" step="any" value={pl.lng||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],lng:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
               </div>
             </div>
           ))}
@@ -586,8 +585,6 @@ export default function AdminPage() {
             <span>CONTACTS</span>
             <button onClick={()=>setModalData(p=>({...p,contacts:[...(p.contacts||[]),{name:'',role:'',email:'',phone:'',isPrimary:false}]}))} style={{padding:'2px 8px',borderRadius:4,border:'1px dashed #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>+ Add Contact</button>
           </div>
-          {(modalData.contacts||[]).length===0&&<div style={{fontSize:10,color:'#8b919e',marginBottom:8,fontStyle:'italic'}}>No contacts. Use the legacy contact field or add structured contacts.</div>}
-          {/* Legacy single contact */}
           {(modalData.contacts||[]).length===0&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:8}}>
             <div><label style={lS}>CONTACT</label><input value={modalData.contact||''} onChange={e=>setModalData({...modalData,contact:e.target.value})} style={iS}/></div>
             <div><label style={lS}>EMAIL</label><input value={modalData.email||''} onChange={e=>setModalData({...modalData,email:e.target.value})} style={iS}/></div>
@@ -619,11 +616,21 @@ export default function AdminPage() {
                 <div><label style={lS}>MODEL</label><input value={eq.model||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],model:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} placeholder="e.g. VP125" style={iS}/></div>
                 <div><label style={lS}>SERIAL #</label><input value={eq.serial||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],serial:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} style={iS}/></div>
                 <div><label style={lS}>YEAR</label><input type="number" value={eq.year||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],year:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} style={iS}/></div>
-                <div><label style={lS}>STATUS</label><select value={eq.status||'active'} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],status:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} style={iS}><option value="active">Active</option><option value="service">Service</option><option value="idle">Idle</option></select></div>
+                <div><label style={lS}>STATUS</label><select value={eq.status||'active'} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],status:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} style={iS}><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
               </div>
               <div style={{marginTop:4}}><label style={lS}>EQUIPMENT NOTES</label><input value={eq.notes||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],notes:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} placeholder="Notes..." style={iS}/></div>
             </div>
           ))}
+
+          {/* ── Keywords & Notes (bottom) ── */}
+          <div style={{fontSize:12,fontWeight:700,color:'#003250',marginTop:12,marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040'}}>KEYWORDS & NOTES</div>
+          <div style={{marginBottom:8}}><label style={lS}>KEYWORDS</label>
+            <div style={{display:'flex',flexWrap:'wrap',gap:4,padding:'6px 8px',border:'1px solid #e2e4e9',borderRadius:6,minHeight:34,alignItems:'center'}}>
+              {(modalData.keywords||[]).map((kw,i)=><span key={i} style={{fontSize:10,background:'#e0e7ff',color:'#3b5998',padding:'2px 8px',borderRadius:4,display:'flex',alignItems:'center',gap:4}}>{kw}<button onClick={()=>setModalData(p=>({...p,keywords:(p.keywords||[]).filter((_,j)=>j!==i)}))} style={{border:'none',background:'none',color:'#3b5998',cursor:'pointer',fontSize:12,padding:0}}>x</button></span>)}
+              <input placeholder="Type & press Enter..." onKeyDown={e=>{if(e.key==='Enter'||e.key===','){e.preventDefault();e.stopPropagation();const v=e.target.value.trim();if(v){setModalData(p=>({...p,keywords:[...(p.keywords||[]),v]}));e.target.value='';}}}} style={{border:'none',outline:'none',fontSize:11,flex:1,minWidth:100,padding:'2px 0'}}/>
+            </div>
+          </div>
+          <div style={{marginBottom:12}}><label style={lS}>NOTES</label><textarea value={modalData.notes||''} onChange={e=>setModalData({...modalData,notes:e.target.value})} rows={2} placeholder="Account notes..." style={{...iS,fontFamily:'inherit',resize:'vertical'}}/></div>
 
           <div style={{display:'flex',gap:8,marginTop:16,paddingTop:12,borderTop:'1px solid #e2e4e9'}}>
             <button onClick={()=>saveCust(modalData,showModal==='addCust')} style={{flex:1,padding:10,background:'#003250',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>{showModal==='addCust'?'Add Customer':'Save Changes'}</button>
