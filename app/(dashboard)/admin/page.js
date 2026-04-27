@@ -233,8 +233,17 @@ export default function AdminPage() {
       if(isNew)setUsers(p=>[...p,d.user]);else setUsers(p=>p.map(u=>u.id===d.user.id?d.user:u));setShowModal(null);setOk(isNew?'User created':'User updated');setTimeout(()=>setOk(''),3000);}catch(e){setErr(e.message);}
   };
   const saveCust = async (data, isNew) => {
-    setErr('');try{const r=await fetch('/api/customers',{method:isNew?'POST':'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const d=await r.json();if(!r.ok){setErr(d.error);return;}
-      if(isNew)setCustomers(p=>[...p,d.customer]);else setCustomers(p=>p.map(c=>c.id===d.customer.id?d.customer:c));setShowModal(null);setOk(isNew?'Customer added':'Customer updated');setTimeout(()=>setOk(''),3000);}catch(e){setErr(e.message);}
+    setErr('');try{
+      // Save basic fields through existing API
+      const basicData = { id: data.id, name: data.name, plant: data.plant, address: data.address, contact: data.contact, email: data.email, phone: data.phone, keywords: data.keywords, notes: data.notes, companyId: data.companyId };
+      const r=await fetch('/api/customers',{method:isNew?'POST':'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(basicData)});const d=await r.json();if(!r.ok){setErr(d.error);return;}
+      const custId = isNew ? d.customer.id : data.id;
+      // Save extended fields (contacts, plants, equipment) through field-map API
+      if (data.contacts?.length || data.plants?.length || data.equipment?.length || data.city || data.concept) {
+        const extData = { ...data, name: data.name };
+        await fetch('/api/field-map/customers/' + custId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(extData) });
+      }
+      if(isNew)setCustomers(p=>[...p,d.customer]);else setCustomers(p=>p.map(c=>c.id===d.customer.id?{...d.customer,...data}:c));setShowModal(null);setOk(isNew?'Customer added':'Customer updated');setTimeout(()=>setOk(''),3000);}catch(e){setErr(e.message);}
   };
 
   const TB=({id,l})=><button onClick={()=>setTab(id)} style={{padding:'7px 14px',borderRadius:6,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,background:tab===id?'#fff':'transparent',color:tab===id?C.navy:'#888',boxShadow:tab===id?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>;
@@ -394,39 +403,48 @@ export default function AdminPage() {
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <h2 style={{fontSize:18,fontWeight:800,color:'#003250',margin:0}}>Customers</h2>
-              <span style={{fontSize:10,color:C.muted}}>{filtered.length} total</span>
-              {Object.keys(custColVals).length>0&&<button onClick={()=>setCustColVals({})} style={{padding:'3px 8px',borderRadius:4,border:'1px solid #fecaca',background:'#fef2f2',color:'#dc2626',fontSize:9,cursor:'pointer'}}>Clear filters</button>}</div>
+              <span style={{fontSize:10,color:C.muted}}>{filtered.length} total</span></div>
             <div style={{display:'flex',gap:6,alignItems:'center'}}>
               <input value={custSearch} onChange={e=>setCustSearch(e.target.value)} placeholder="Search..." style={{padding:'5px 10px',borderRadius:6,border:'1px solid #e2e4e9',fontSize:11,width:150}}/>
-              {canEditCo(co)&&<><button onClick={()=>{setModalData({name:'',plant:'',address:'',contact:'',email:'',phone:'',keywords:[],notes:'',companyId:co!=='__corporate'?cd?.id||'':''});setShowModal('addCust');}} style={{padding:'6px 14px',background:'#003250',color:'#fff',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer'}}>+ Add</button><button onClick={()=>setShowImport('customers')} style={{padding:'6px 10px',background:'#fff',color:'#003250',border:'1px solid #003250',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Import</button></>}
-              {!canEditCo(co)&&<span style={{fontSize:9,fontWeight:700,color:'#8b919e',background:'#f3f4f6',padding:'4px 10px',borderRadius:6}}>View Only</span>}
+              {canEditCo(co)&&<><button onClick={()=>{setModalData({name:'',plant:'',address:'',contact:'',email:'',phone:'',keywords:[],notes:'',companyId:co!=='__corporate'?cd?.id||'':'',concept:'',city:'',state:'',country:'',contacts:[],plants:[],equipment:[]});setShowModal('addCust');}} style={{padding:'6px 14px',background:'#003250',color:'#fff',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer'}}>+ Add Customer</button><button onClick={()=>setShowImport('customers')} style={{padding:'6px 10px',background:'#fff',color:'#003250',border:'1px solid #003250',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Import</button></>}
             </div></div>
-          <div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e4e9',overflow:'visible',position:'relative'}}>
-            {filtered.length===0?<div style={{padding:30,textAlign:'center',color:'#8b919e'}}>No customers</div>
-            :<table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}><thead><tr style={{background:'#f8f9fb'}}>
-              {canEditCo(co)&&<th style={{padding:'6px 10px',width:30}}><input type="checkbox" checked={allChecked} onChange={()=>{if(allChecked)setCheckedCust(new Set());else setCheckedCust(new Set(filtered.map(c=>c.id)));}} style={{cursor:'pointer'}}/></th>}
-              {custCols.map(h=>(
-                <th key={h.k} style={{padding:'6px 12px',textAlign:'left',fontSize:9,fontWeight:700,color:'#8b919e',borderBottom:'1px solid #e2e4e9',cursor:'pointer',userSelect:'none',position:'relative'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:2}}>
-                    <span onClick={()=>setCustSort(p=>({k:h.k,d:p.k===h.k&&p.d==='asc'?'desc':'asc'}))}>{h.l} {custSort.k===h.k?(custSort.d==='asc'?'\u2191':'\u2193'):''}</span>
-                    {h.filterable&&<button onClick={e=>{e.stopPropagation();setCustColFilter(custColFilter===h.k?null:h.k);}} style={{border:'none',background:'none',cursor:'pointer',fontSize:9,color:custColVals[h.k]?'#2563eb':'#ccc',padding:'0 2px'}}>{'\u25BC'}</button>}
-                  </div>
-                  {custColFilter===h.k&&<div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'100%',left:0,zIndex:50,background:'#fff',border:'1px solid #e2e4e9',borderRadius:8,boxShadow:'0 4px 12px rgba(0,0,0,.1)',padding:8,minWidth:140,maxHeight:200,overflowY:'auto'}}>
-                    {getCustUniqueVals(h.k).map(v=>(<label key={v} style={{display:'flex',alignItems:'center',gap:6,padding:'3px 0',fontSize:10,cursor:'pointer'}}><input type="checkbox" checked={custColVals[h.k]?.has(v)||false} onChange={()=>toggleCustColFilter(h.k,v)}/>{v}</label>))}
-                    <div style={{borderTop:'1px solid #eee',marginTop:4,paddingTop:4}}><button onClick={()=>{setCustColVals(p=>{const n={...p};delete n[h.k];return n;});setCustColFilter(null);}} style={{fontSize:9,color:'#dc2626',border:'none',background:'none',cursor:'pointer'}}>Clear</button></div>
-                  </div>}
-                </th>))}
-            </tr></thead><tbody>{filtered.map(c=>{const ck=checkedCust.has(c.id);return(
-              <tr key={c.id} style={{borderBottom:'1px solid #f3f4f6',background:ck?'#f0f7ff':'transparent',cursor:canEditCo(co)?'pointer':'default'}} onMouseOver={e=>{if(!ck)e.currentTarget.style.background='#fafbfc';}} onMouseOut={e=>{if(!ck)e.currentTarget.style.background=ck?'#f0f7ff':'transparent';}}>
-                {canEditCo(co)&&<td style={{padding:'6px 10px'}} onClick={e=>e.stopPropagation()}><input type="checkbox" checked={ck} onChange={()=>{setCheckedCust(p=>{const n=new Set(p);if(n.has(c.id))n.delete(c.id);else n.add(c.id);return n;});}} style={{cursor:'pointer'}}/></td>}
-                <td onClick={()=>{if(canEditCo(co)){setModalData({...c,keywords:c.keywords||[]});setShowModal('editCust');}}} style={{padding:'6px 12px',fontWeight:600,color:'#003250'}}>{c.name}</td>
-                <td onClick={()=>{if(canEditCo(co)){setModalData({...c,keywords:c.keywords||[]});setShowModal('editCust');}}} style={{padding:'6px 12px',color:'#555'}}>{c.plant||'\u2014'}</td>
-                <td style={{padding:'6px 12px'}}>{c.contact||'\u2014'}</td>
-                <td style={{padding:'6px 12px',color:'#8b919e'}}>{c.email||'\u2014'}</td>
-                <td style={{padding:'6px 12px',color:'#8b919e'}}>{c.phone||'\u2014'}</td>
-                <td style={{padding:'6px 12px'}}>{(c.keywords||[]).map(k=><span key={k} style={{fontSize:8,background:'#e0e7ff',color:'#3b5998',padding:'1px 5px',borderRadius:4,marginRight:2}}>{k}</span>)}</td>
-              </tr>);})}</tbody></table>}
-          </div>
+          {/* Catalog-style: customer as section, plants as items */}
+          {filtered.length===0?<div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e4e9',padding:30,textAlign:'center',color:'#8b919e'}}>No customers</div>
+          :filtered.map(c=>{
+            const editCust = async () => {
+              if(!canEditCo(co)) return;
+              try{const r=await fetch('/api/field-map/customers');const d=await r.json();const full=(d.customers||[]).find(x=>x.id===c.id);
+              setModalData({...c,...(full||{}),keywords:c.keywords||[],contacts:full?.contacts||[],plants:full?.plants||[],equipment:(full?.equipment||[]).map(e=>({...e,companyId:e.companyId||e.company?.id||null}))});
+              }catch{setModalData({...c,keywords:c.keywords||[],contacts:[],plants:[],equipment:[]});}
+              setShowModal('editCust');
+            };
+            return <div key={c.id} style={{background:'#fff',borderRadius:10,border:'1px solid #e2e4e9',marginBottom:8,overflow:'hidden'}}>
+              {/* Customer header - like catalog section */}
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'#f8f9fb',cursor:'pointer'}} onClick={editCust}>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{width:3,height:20,borderRadius:2,background:'#003250'}}/>
+                  <span style={{fontSize:14,fontWeight:700,color:'#003250'}}>{c.name}</span>
+                  {c.concept&&<span style={{fontSize:9,color:C.muted}}>{c.concept}</span>}
+                  {(c.keywords||[]).map(k=><span key={k} style={{fontSize:8,background:'#e0e7ff',color:'#3b5998',padding:'1px 5px',borderRadius:4}}>{k}</span>)}
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:9,color:C.muted}}>{c.contact||''}{c.phone?' · '+c.phone:''}</span>
+                </div>
+              </div>
+              {/* Plant rows - like catalog items */}
+              <div>
+                {c.address&&<div style={{display:'flex',alignItems:'center',padding:'6px 16px 6px 36px',borderTop:'1px solid #f3f4f6',fontSize:11}}>
+                  <span style={{flex:2,fontWeight:500,color:'#333'}}>{c.address}</span>
+                  <span style={{flex:1,color:C.muted,fontSize:10}}>{[c.city,c.state].filter(Boolean).join(', ')}</span>
+                  <span style={{flex:1,color:C.muted,fontSize:10}}>{c.email||''}</span>
+                </div>}
+                {c.plant&&<div style={{display:'flex',alignItems:'center',padding:'6px 16px 6px 36px',borderTop:'1px solid #f3f4f6',fontSize:11}}>
+                  <span style={{flex:2,fontWeight:500,color:'#555'}}>{c.plant}</span>
+                  <span style={{flex:1}}></span><span style={{flex:1}}></span>
+                </div>}
+              </div>
+            </div>;
+          })}
           {checkedList.length>0&&<div style={{position:'fixed',bottom:0,left:0,right:0,background:'#003250',color:'#fff',padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:100,boxShadow:'0 -4px 20px rgba(0,0,0,.2)'}}>
             <div style={{display:'flex',alignItems:'center',gap:12}}>
               <span style={{fontSize:12,fontWeight:700}}>{checkedList.length} customer{checkedList.length>1?'s':''} selected</span>
@@ -494,7 +512,7 @@ export default function AdminPage() {
       })()}
 
       {/* ═══ UNIVERSAL MODAL ═══ */}
-      {showModal&&<div className="modal-overlay" onClick={()=>setShowModal(null)}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:500}}>
+      {showModal&&<div className="modal-overlay" onClick={()=>setShowModal(null)}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:(showModal==='addCust'||showModal==='editCust')?680:500}}>
         <div style={{fontSize:17,fontWeight:800,color:'#003250',marginBottom:16}}>{showModal==='addUser'?'Add User':showModal==='editUser'?'Edit User':showModal==='addCust'?'Add Customer':'Edit Customer'}</div>
 
         {(showModal==='addUser'||showModal==='editUser')&&<div>
@@ -526,7 +544,7 @@ export default function AdminPage() {
           <div style={{marginBottom:8}}><label style={lS}>KEYWORDS</label>
             <div style={{display:'flex',flexWrap:'wrap',gap:4,padding:'6px 8px',border:'1px solid #e2e4e9',borderRadius:6,minHeight:34,alignItems:'center'}}>
               {(modalData.keywords||[]).map((kw,i)=><span key={i} style={{fontSize:10,background:'#e0e7ff',color:'#3b5998',padding:'2px 8px',borderRadius:4,display:'flex',alignItems:'center',gap:4}}>{kw}<button onClick={()=>setModalData({...modalData,keywords:(modalData.keywords||[]).filter((_,j)=>j!==i)})} style={{border:'none',background:'none',color:'#3b5998',cursor:'pointer',fontSize:12,padding:0}}>x</button></span>)}
-              <input placeholder="Type & press Enter..." onKeyDown={e=>{if((e.key==='Enter'||e.key===',')&&e.target.value.trim()){e.preventDefault();setModalData(p=>({...p,keywords:[...(p.keywords||[]),e.target.value.trim()]}));e.target.value='';}}} style={{border:'none',outline:'none',fontSize:11,flex:1,minWidth:80,padding:'2px 0'}}/>
+              <input placeholder="Type & press Enter..." onKeyDown={e=>{if(e.key==='Enter'||e.key===','){e.preventDefault();e.stopPropagation();const v=e.target.value.trim();if(v){setModalData(p=>({...p,keywords:[...(p.keywords||[]),v]}));e.target.value='';}}}} style={{border:'none',outline:'none',fontSize:11,flex:1,minWidth:100,padding:'2px 0'}}/>
             </div>
           </div>
           <div style={{marginBottom:12}}><label style={lS}>NOTES</label><textarea value={modalData.notes||''} onChange={e=>setModalData({...modalData,notes:e.target.value})} rows={2} style={{...iS,fontFamily:'inherit',resize:'vertical'}}/></div>
@@ -538,7 +556,10 @@ export default function AdminPage() {
           </div>
           <div style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:8,border:'1px solid #eef0f2'}}>
             <div style={{fontSize:10,fontWeight:600,color:'#8b919e',marginBottom:4}}>Main Address</div>
-            <input value={modalData.address||''} onChange={e=>setModalData({...modalData,address:e.target.value})} placeholder="Street address" style={{...iS,marginBottom:6}}/>
+            <div style={{display:'flex',gap:6,marginBottom:6}}>
+              <input value={modalData.address||''} onChange={e=>setModalData({...modalData,address:e.target.value})} placeholder="Street address" style={{...iS,flex:1}}/>
+              <button onClick={async()=>{const a=[modalData.address,modalData.city,modalData.state,modalData.country].filter(Boolean).join(', ');if(!a)return;try{const r=await fetch('/api/field-map/geocode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:a})});if(r.ok){const d=await r.json();setModalData(p=>({...p,lat:d.lat,lng:d.lng}));}else alert('Not found');}catch{alert('Geocode failed');}}} style={{padding:'6px 10px',borderRadius:6,border:'1px solid #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>📍 Lookup</button>
+            </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
               <div><label style={lS}>CITY</label><input value={modalData.city||''} onChange={e=>setModalData({...modalData,city:e.target.value})} style={iS}/></div>
               <div><label style={lS}>STATE</label><input value={modalData.state||''} onChange={e=>setModalData({...modalData,state:e.target.value})} style={iS}/></div>
