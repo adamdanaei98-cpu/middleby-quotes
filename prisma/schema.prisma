@@ -78,6 +78,7 @@ model Company {
   catalogSections  CatalogSection[]
   customers        Customer[]
   primaryCustomers Customer[]       @relation("CustomerPrimaryCompany")
+  equipment        Equipment[]
 }
 
 model CompanyUser {
@@ -120,8 +121,22 @@ model Customer {
 
   quotes       Quote[]
   equipment    Equipment[]
+  contacts     CustomerContact[]
   fieldMapReps CustomerFieldMapRep[]
   visits       Visit[]
+}
+
+// ─── CUSTOMER CONTACTS ────────────────────────────────────────
+model CustomerContact {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name       String
+  role       String?  // Plant Manager, Maint Manager, VP Ops, etc.
+  email      String?
+  phone      String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
 }
 
 // ─── FIELD MAP: EQUIPMENT ─────────────────────────────────────
@@ -133,6 +148,8 @@ model Equipment {
   serial     String?
   year       Int?
   status     String   @default("active") // active, service, idle
+  companyId  String?  // which brand (RVP, Thurne, etc.)
+  company    Company? @relation(fields: [companyId], references: [id])
   notes      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

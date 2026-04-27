@@ -184,6 +184,12 @@ export default function FieldMapPage() {
         <select value={stateFilter} onChange={e => setStateFilter(e.target.value)} style={{ ...iS, marginBottom: 8 }}><option value="">All</option>{states.map(s => <option key={s}>{s}</option>)}</select>
         <div style={lS}>INDUSTRY</div>
         <select value={industryFilter} onChange={e => setIndustryFilter(e.target.value)} style={{ ...iS, marginBottom: 8 }}><option value="">All</option>{industries.map(i => <option key={i}>{i}</option>)}</select>
+        <div style={lS}>KEYWORDS</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 8 }}>
+          {[...new Set(customers.flatMap(c => c.keywords || []))].sort().slice(0, 20).map(k => (
+            <button key={k} onClick={() => setSearch(search === k ? '' : k)} style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid ' + (search === k ? C.navy : C.border), fontSize: 8, cursor: 'pointer', background: search === k ? C.navy : 'transparent', color: search === k ? '#fff' : C.muted }}>{k}</button>
+          ))}
+        </div>
         <div style={lS}>SORT BY</div>
         <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ ...iS, marginBottom: 10 }}><option value="name">Name</option><option value="distance">Distance</option><option value="state">State</option><option value="brand">Brand</option></select>
 
@@ -202,7 +208,7 @@ export default function FieldMapPage() {
         </div>
 
         {noCoords > 0 && <div style={{ fontSize: 9, color: '#d97706', background: '#fffbeb', padding: '6px 8px', borderRadius: 6, border: '1px solid #fde68a', marginBottom: 8 }}>{noCoords} missing coordinates</div>}
-        {canEdit && <button onClick={() => setEditForm({ name: '', equipment: [], repIds: [] })} style={{ width: '100%', padding: '8px 0', borderRadius: 6, border: 'none', background: C.navy, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+ Add Customer</button>}
+        {canEdit && <button onClick={() => setEditForm({ name: '', equipment: [], repIds: [], contacts: [], keywords: [] })} style={{ width: '100%', padding: '8px 0', borderRadius: 6, border: 'none', background: C.navy, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+ Add Customer</button>}
       </div>
 
       {/* ═══ LIST ═══ */}
@@ -258,17 +264,35 @@ export default function FieldMapPage() {
             {selected.lat && selected.lng && <a href={`https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`} target="_blank" rel="noopener" style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.blue, color: C.blue, fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Directions</a>}
             {selected.phone && <a href={'tel:' + selected.phone.replace(/[^0-9+]/g, '')} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.green, color: C.green, fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Call</a>}
             {selected.email && <a href={'mailto:' + selected.email} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #d97706', color: '#d97706', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Email</a>}
-            {canEdit && <button onClick={() => setEditForm({ ...selected, repIds: (selected.fieldMapReps || []).map(r => r.userId), equipment: selected.equipment || [] })} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.muted, color: C.muted, fontSize: 10, fontWeight: 600, background: 'none', cursor: 'pointer' }}>Edit</button>}
+            {canEdit && <button onClick={() => setEditForm({ ...selected, repIds: (selected.fieldMapReps || []).map(r => r.userId), equipment: (selected.equipment || []).map(e => ({ ...e, companyId: e.companyId || e.company?.id || null })), contacts: selected.contacts || [] })} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.muted, color: C.muted, fontSize: 10, fontWeight: 600, background: 'none', cursor: 'pointer' }}>Edit</button>}
           </div>
 
-          {/* Contact */}
-          <div style={{ marginBottom: 14 }}><div style={lS}>PRIMARY CONTACT</div>
-            {selected.contact && <div style={{ fontSize: 12, fontWeight: 600, color: '#333' }}>{selected.contact}</div>}
-            {selected.contactRole && <div style={{ fontSize: 10, color: C.muted }}>{selected.contactRole}</div>}
-            {selected.phone && <div style={{ fontSize: 11, marginTop: 2 }}><a href={'tel:' + selected.phone.replace(/[^0-9+]/g, '')} style={{ color: '#333', textDecoration: 'none', borderBottom: '1px dotted #ccc' }}>{selected.phone}</a></div>}
-            {selected.email && <div style={{ fontSize: 11 }}><a href={'mailto:' + selected.email} style={{ color: '#333', textDecoration: 'none', borderBottom: '1px dotted #ccc' }}>{selected.email}</a></div>}
-            {selected.address && <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>{selected.address}</div>}
+          {/* Contacts */}
+          <div style={{ marginBottom: 14 }}><div style={lS}>CONTACTS{selected.contacts?.length > 0 ? ' \u00b7 ' + selected.contacts.length : ''}</div>
+            {selected.contacts?.length > 0 ? selected.contacts.map((ct, i) => (
+              <div key={i} style={{ padding: '5px 0', borderBottom: '1px solid #f3f4f6' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#333' }}>{ct.name}</span>
+                  {ct.isPrimary && <span style={{ fontSize: 7, fontWeight: 700, color: C.blue, background: '#dbeafe', padding: '1px 5px', borderRadius: 6 }}>PRIMARY</span>}
+                </div>
+                {ct.role && <div style={{ fontSize: 10, color: C.muted }}>{ct.role}</div>}
+                <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                  {ct.phone && <a href={'tel:' + ct.phone.replace(/[^0-9+]/g, '')} style={{ fontSize: 10, color: '#333', textDecoration: 'none', borderBottom: '1px dotted #ccc' }}>{ct.phone}</a>}
+                  {ct.email && <a href={'mailto:' + ct.email} style={{ fontSize: 10, color: '#333', textDecoration: 'none', borderBottom: '1px dotted #ccc' }}>{ct.email}</a>}
+                </div>
+              </div>
+            )) : selected.contact ? <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#333' }}>{selected.contact}</div>
+              {selected.contactRole && <div style={{ fontSize: 10, color: C.muted }}>{selected.contactRole}</div>}
+              {selected.phone && <div style={{ fontSize: 11, marginTop: 2 }}><a href={'tel:' + selected.phone.replace(/[^0-9+]/g, '')} style={{ color: '#333', textDecoration: 'none', borderBottom: '1px dotted #ccc' }}>{selected.phone}</a></div>}
+              {selected.email && <div style={{ fontSize: 11 }}><a href={'mailto:' + selected.email} style={{ color: '#333', textDecoration: 'none', borderBottom: '1px dotted #ccc' }}>{selected.email}</a></div>}
+            </div> : <div style={{ fontSize: 10, color: C.muted }}>No contacts on file</div>}
+            {selected.address && <div style={{ fontSize: 10, color: C.muted, marginTop: 6 }}>{selected.address}</div>}
           </div>
+          {/* Keywords */}
+          {selected.keywords?.length > 0 && <div style={{ marginBottom: 14 }}><div style={lS}>KEYWORDS</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>{selected.keywords.map(k => <span key={k} style={{ fontSize: 8, background: '#e0e7ff', color: '#3b5998', padding: '2px 6px', borderRadius: 4 }}>{k}</span>)}</div>
+          </div>}
 
           {/* Reps */}
           {selected.fieldMapReps?.length > 0 && <div style={{ marginBottom: 14 }}><div style={lS}>SALES REPS · {selected.fieldMapReps.length}</div>
@@ -284,6 +308,7 @@ export default function FieldMapPage() {
             {selected.equipment.map(e => <div key={e.id} style={{ padding: '5px 0', borderBottom: '1px solid #f3f4f6' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 11, fontWeight: 600 }}>{e.model}</span>
+                {e.company && <span style={{ fontSize: 7, fontWeight: 700, color: '#fff', background: e.company.color, padding: '1px 5px', borderRadius: 6, marginLeft: 4 }}>{e.company.name}</span>}
                 <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 6px', borderRadius: 8, background: e.status === 'active' ? '#dcfce7' : e.status === 'service' ? '#fef3c7' : '#f3f4f6', color: e.status === 'active' ? C.green : e.status === 'service' ? '#d97706' : C.muted }}>{e.status}</span>
               </div>
               <div style={{ fontSize: 9, color: C.muted }}>{e.serial ? 'SN ' + e.serial : ''}{e.year ? ' · ' + e.year : ''}</div>
@@ -355,6 +380,26 @@ export default function FieldMapPage() {
             <div><div style={lS}>PHONE</div><input value={editForm.phone || ''} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} style={iS} /></div>
           </div>
 
+          {/* Contacts editor */}
+          <div style={{ marginTop: 12 }}><div style={lS}>CONTACTS</div>
+            {(editForm.contacts || []).map((ct, i) => (
+              <div key={i} style={{ display: 'flex', gap: 4, marginTop: 4, alignItems: 'center' }}>
+                <input placeholder="Name" value={ct.name || ''} onChange={e => { const cts = [...(editForm.contacts || [])]; cts[i] = { ...cts[i], name: e.target.value }; setEditForm(p => ({ ...p, contacts: cts })); }} style={{ flex: 1.5, padding: '4px 6px', borderRadius: 4, border: '1px solid ' + C.border, fontSize: 10 }} />
+                <input placeholder="Role (Plant Mgr, etc.)" value={ct.role || ''} onChange={e => { const cts = [...(editForm.contacts || [])]; cts[i] = { ...cts[i], role: e.target.value }; setEditForm(p => ({ ...p, contacts: cts })); }} style={{ flex: 1.5, padding: '4px 6px', borderRadius: 4, border: '1px solid ' + C.border, fontSize: 10 }} />
+                <input placeholder="Email" value={ct.email || ''} onChange={e => { const cts = [...(editForm.contacts || [])]; cts[i] = { ...cts[i], email: e.target.value }; setEditForm(p => ({ ...p, contacts: cts })); }} style={{ flex: 1.5, padding: '4px 6px', borderRadius: 4, border: '1px solid ' + C.border, fontSize: 10 }} />
+                <input placeholder="Phone" value={ct.phone || ''} onChange={e => { const cts = [...(editForm.contacts || [])]; cts[i] = { ...cts[i], phone: e.target.value }; setEditForm(p => ({ ...p, contacts: cts })); }} style={{ flex: 1, padding: '4px 6px', borderRadius: 4, border: '1px solid ' + C.border, fontSize: 10 }} />
+                <label style={{ fontSize: 8, display: 'flex', alignItems: 'center', gap: 2, whiteSpace: 'nowrap' }}><input type="checkbox" checked={ct.isPrimary || false} onChange={e => { const cts = [...(editForm.contacts || [])]; cts[i] = { ...cts[i], isPrimary: e.target.checked }; setEditForm(p => ({ ...p, contacts: cts })); }} />Primary</label>
+                <button onClick={() => { const cts = [...(editForm.contacts || [])]; cts.splice(i, 1); setEditForm(p => ({ ...p, contacts: cts })); }} style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}>x</button>
+              </div>
+            ))}
+            <button onClick={() => setEditForm(p => ({ ...p, contacts: [...(p.contacts || []), { name: '', role: '', email: '', phone: '', isPrimary: false }] }))} style={{ marginTop: 6, padding: '4px 10px', borderRadius: 4, border: '1px dashed ' + C.border, background: 'none', color: C.muted, fontSize: 9, cursor: 'pointer' }}>+ Add contact</button>
+          </div>
+
+          {/* Keywords */}
+          <div style={{ marginTop: 10 }}><div style={lS}>KEYWORDS</div>
+            <input value={(editForm.keywords || []).join(', ')} onChange={e => setEditForm(p => ({ ...p, keywords: e.target.value.split(',').map(k => k.trim()).filter(Boolean) }))} placeholder="comma-separated keywords" style={iS} />
+          </div>
+
           <div style={{ marginTop: 12 }}><div style={lS}>ASSIGNED REPS</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
               {reps.map(r => { const isOn = (editForm.repIds || []).includes(r.id); return <button key={r.id} onClick={() => setEditForm(p => ({ ...p, repIds: isOn ? (p.repIds || []).filter(x => x !== r.id) : [...(p.repIds || []), r.id] }))} style={{ padding: '3px 8px', borderRadius: 10, border: '1px solid ' + (r.primaryCompany?.color || C.muted), fontSize: 9, fontWeight: 600, cursor: 'pointer', background: isOn ? (r.primaryCompany?.color || C.navy) : 'transparent', color: isOn ? '#fff' : (r.primaryCompany?.color || C.muted) }}>{r.name}</button>; })}
@@ -367,6 +412,7 @@ export default function FieldMapPage() {
                 <input placeholder="Model" value={eq.model || ''} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], model: e.target.value }; setEditForm(p => ({ ...p, equipment: eqs })); }} style={{ flex: 2, padding: '4px 6px', borderRadius: 4, border: '1px solid ' + C.border, fontSize: 10 }} />
                 <input placeholder="Serial #" value={eq.serial || ''} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], serial: e.target.value }; setEditForm(p => ({ ...p, equipment: eqs })); }} style={{ flex: 1.5, padding: '4px 6px', borderRadius: 4, border: '1px solid ' + C.border, fontSize: 10 }} />
                 <input placeholder="Year" type="number" value={eq.year || ''} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], year: e.target.value }; setEditForm(p => ({ ...p, equipment: eqs })); }} style={{ width: 50, padding: '4px 6px', borderRadius: 4, border: '1px solid ' + C.border, fontSize: 10 }} />
+                <select value={eq.companyId || ''} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], companyId: e.target.value || null }; setEditForm(p => ({ ...p, equipment: eqs })); }} style={{ padding: '4px', borderRadius: 4, border: '1px solid ' + C.border, fontSize: 10 }}><option value="">Brand...</option>{companies.map(co => <option key={co.id} value={co.id}>{co.name}</option>)}</select>
                 <select value={eq.status || 'active'} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], status: e.target.value }; setEditForm(p => ({ ...p, equipment: eqs })); }} style={{ padding: '4px', borderRadius: 4, border: '1px solid ' + C.border, fontSize: 10 }}><option value="active">Active</option><option value="service">Service</option><option value="idle">Idle</option></select>
                 <button onClick={() => { const eqs = [...(editForm.equipment || [])]; eqs.splice(i, 1); setEditForm(p => ({ ...p, equipment: eqs })); }} style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}>x</button>
               </div>

@@ -9,8 +9,8 @@ export async function PUT(request, { params }) {
   try {
     const data = await request.json();
     const customer = await db.$transaction(async (tx) => {
-      // Delete old equipment and reps, then recreate
       await tx.equipment.deleteMany({ where: { customerId: params.id } });
+      await tx.customerContact.deleteMany({ where: { customerId: params.id } });
       await tx.customerFieldMapRep.deleteMany({ where: { customerId: params.id } });
       return tx.customer.update({
         where: { id: params.id },
@@ -32,13 +32,31 @@ export async function PUT(request, { params }) {
           keywords: data.keywords || [],
           primaryCompanyId: data.primaryCompanyId || null,
           equipment: data.equipment?.length ? {
-            create: data.equipment.map(e => ({ model: e.model, serial: e.serial || null, year: e.year ? parseInt(e.year) : null, status: e.status || 'active', notes: e.notes || null })),
+            create: data.equipment.map(e => ({
+              model: e.model, serial: e.serial || null,
+              year: e.year ? parseInt(e.year) : null,
+              status: e.status || 'active',
+              companyId: e.companyId || null,
+              notes: e.notes || null,
+            })),
+          } : undefined,
+          contacts: data.contacts?.length ? {
+            create: data.contacts.map(c => ({
+              name: c.name, role: c.role || null,
+              email: c.email || null, phone: c.phone || null,
+              isPrimary: c.isPrimary || false,
+            })),
           } : undefined,
           fieldMapReps: data.repIds?.length ? {
             create: data.repIds.map(uid => ({ userId: uid })),
           } : undefined,
         },
-        include: { primaryCompany: true, equipment: true, fieldMapReps: { include: { user: true } } },
+        include: {
+          primaryCompany: true,
+          equipment: { include: { company: true } },
+          contacts: true,
+          fieldMapReps: { include: { user: true } },
+        },
       });
     });
     return NextResponse.json({ customer });
