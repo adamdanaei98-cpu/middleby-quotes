@@ -11,6 +11,7 @@ export async function PUT(request, { params }) {
     const customer = await db.$transaction(async (tx) => {
       await tx.equipment.deleteMany({ where: { customerId: params.id } });
       await tx.customerContact.deleteMany({ where: { customerId: params.id } });
+      await tx.customerPlant.deleteMany({ where: { customerId: params.id } });
       await tx.customerFieldMapRep.deleteMany({ where: { customerId: params.id } });
       return tx.customer.update({
         where: { id: params.id },
@@ -47,6 +48,14 @@ export async function PUT(request, { params }) {
               isPrimary: c.isPrimary || false,
             })),
           } : undefined,
+          plants: data.plants?.length ? {
+            create: data.plants.map(p => ({
+              name: p.name, address: p.address || null,
+              city: p.city || null, state: p.state || null, country: p.country || null,
+              lat: p.lat ? parseFloat(p.lat) : null, lng: p.lng ? parseFloat(p.lng) : null,
+              contact: p.contact || null, phone: p.phone || null, notes: p.notes || null,
+            })),
+          } : undefined,
           fieldMapReps: data.repIds?.length ? {
             create: data.repIds.map(uid => ({ userId: uid })),
           } : undefined,
@@ -55,6 +64,7 @@ export async function PUT(request, { params }) {
           primaryCompany: true,
           equipment: { include: { company: true } },
           contacts: true,
+          plants: true,
           fieldMapReps: { include: { user: true } },
         },
       });

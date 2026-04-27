@@ -122,8 +122,27 @@ model Customer {
   quotes       Quote[]
   equipment    Equipment[]
   contacts     CustomerContact[]
+  plants       CustomerPlant[]
   fieldMapReps CustomerFieldMapRep[]
   visits       Visit[]
+}
+
+// ─── CUSTOMER PLANTS (sub-locations) ─────────────────────────
+model CustomerPlant {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name       String   // e.g. "Austin Plant", "Building 3"
+  address    String?
+  city       String?
+  state      String?
+  country    String?
+  lat        Float?
+  lng        Float?
+  contact    String?  // plant-level contact
+  phone      String?
+  notes      String?
+  createdAt  DateTime @default(now())
 }
 
 // ─── CUSTOMER CONTACTS ────────────────────────────────────────

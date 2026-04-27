@@ -12,6 +12,7 @@ export async function GET() {
       company: { select: { id: true, key: true, name: true, color: true } },
       equipment: { include: { company: { select: { id: true, name: true, color: true } } } },
       contacts: { orderBy: { isPrimary: 'desc' } },
+      plants: true,
       fieldMapReps: { include: { user: { select: { id: true, name: true, email: true, role: true, primaryCompanyId: true, primaryCompany: { select: { name: true, color: true } } } } } },
       visits: { orderBy: { visitDate: 'desc' }, take: 1, include: { user: { select: { name: true } } } },
     },
@@ -51,11 +52,14 @@ export async function POST(request) {
         contacts: data.contacts?.length ? {
           create: data.contacts.map(c => ({ name: c.name, role: c.role || null, email: c.email || null, phone: c.phone || null, isPrimary: c.isPrimary || false })),
         } : undefined,
+        plants: data.plants?.length ? {
+          create: data.plants.map(p => ({ name: p.name, address: p.address || null, city: p.city || null, state: p.state || null, country: p.country || null, lat: p.lat ? parseFloat(p.lat) : null, lng: p.lng ? parseFloat(p.lng) : null, contact: p.contact || null, phone: p.phone || null, notes: p.notes || null })),
+        } : undefined,
         fieldMapReps: data.repIds?.length ? {
           create: data.repIds.map(uid => ({ userId: uid })),
         } : undefined,
       },
-      include: { primaryCompany: true, equipment: { include: { company: true } }, contacts: true, fieldMapReps: { include: { user: true } } },
+      include: { primaryCompany: true, equipment: { include: { company: true } }, contacts: true, plants: true, fieldMapReps: { include: { user: true } } },
     });
     return NextResponse.json({ customer });
   } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
