@@ -517,15 +517,94 @@ export default function AdminPage() {
         </div>}
 
         {(showModal==='addCust'||showModal==='editCust')&&<div>
-          {[['name','Company Name'],['plant','Plant / Facility'],['address','Address'],['contact','Contact'],['email','Email'],['phone','Phone']].map(([k,l])=>(
-            <div key={k} style={{marginBottom:8}}><label style={lS}>{l.toUpperCase()}</label><input value={modalData[k]||''} onChange={e=>setModalData({...modalData,[k]:e.target.value})} style={iS}/></div>))}
-          <div style={{marginBottom:8}}><label style={lS}>COMPANY</label><select value={modalData.companyId||''} onChange={e=>setModalData({...modalData,companyId:e.target.value})} style={iS}><option value="">None</option>{dbCos.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-          <div style={{marginBottom:8}}><label style={lS}>KEYWORDS (max 3)</label>
-            <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:6}}>{(modalData.keywords||[]).map((kw,i)=><span key={i} style={{fontSize:10,background:'#e0e7ff',color:'#3b5998',padding:'2px 8px',borderRadius:4,display:'flex',alignItems:'center',gap:4}}>{kw}<button onClick={()=>setModalData({...modalData,keywords:(modalData.keywords||[]).filter((_,j)=>j!==i)})} style={{border:'none',background:'none',color:'#888',cursor:'pointer',fontSize:12,padding:0}}>{'\u00D7'}</button></span>)}</div>
-            {(modalData.keywords||[]).length<3&&<div style={{display:'flex',gap:4}}><select onChange={e=>{if(e.target.value&&!(modalData.keywords||[]).includes(e.target.value)){setModalData({...modalData,keywords:[...(modalData.keywords||[]),e.target.value]});}e.target.value='';}} style={{...iS,flex:1}}><option value="">Add keyword...</option>{['Meat','Poultry','Seafood','Bakery','Dairy','Snacks','Pet Food','Ready Meals','Produce','Frozen Foods','Confectionery','Beverages'].filter(k=>!(modalData.keywords||[]).includes(k)).map(k=><option key={k} value={k}>{k}</option>)}<option value="__custom">+ Custom...</option></select></div>}
+          {/* ── Customer Details ── */}
+          <div style={{fontSize:12,fontWeight:700,color:'#003250',marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040'}}>CUSTOMER DETAILS</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+            <div><label style={lS}>CUSTOMER NAME *</label><input value={modalData.name||''} onChange={e=>setModalData({...modalData,name:e.target.value})} placeholder="e.g. Hormel Foods" list="adminCustNames" style={iS}/><datalist id="adminCustNames">{[...new Set(customers.map(c=>c.name))].sort().map(n=><option key={n} value={n}/>)}</datalist></div>
+            <div><label style={lS}>INDUSTRY / CONCEPT</label><input value={modalData.concept||''} onChange={e=>setModalData({...modalData,concept:e.target.value})} placeholder="e.g. Meat Processing" style={iS}/></div>
           </div>
-          <div style={{marginBottom:8}}><label style={lS}>NOTES</label><textarea value={modalData.notes||''} onChange={e=>setModalData({...modalData,notes:e.target.value})} rows={2} style={{...iS,fontFamily:'inherit',resize:'vertical'}}/></div>
-          <div style={{display:'flex',gap:8,marginTop:16}}>
+          <div style={{marginBottom:8}}><label style={lS}>KEYWORDS</label>
+            <div style={{display:'flex',flexWrap:'wrap',gap:4,padding:'6px 8px',border:'1px solid #e2e4e9',borderRadius:6,minHeight:34,alignItems:'center'}}>
+              {(modalData.keywords||[]).map((kw,i)=><span key={i} style={{fontSize:10,background:'#e0e7ff',color:'#3b5998',padding:'2px 8px',borderRadius:4,display:'flex',alignItems:'center',gap:4}}>{kw}<button onClick={()=>setModalData({...modalData,keywords:(modalData.keywords||[]).filter((_,j)=>j!==i)})} style={{border:'none',background:'none',color:'#3b5998',cursor:'pointer',fontSize:12,padding:0}}>x</button></span>)}
+              <input placeholder="Type & press Enter..." onKeyDown={e=>{if((e.key==='Enter'||e.key===',')&&e.target.value.trim()){e.preventDefault();setModalData(p=>({...p,keywords:[...(p.keywords||[]),e.target.value.trim()]}));e.target.value='';}}} style={{border:'none',outline:'none',fontSize:11,flex:1,minWidth:80,padding:'2px 0'}}/>
+            </div>
+          </div>
+          <div style={{marginBottom:12}}><label style={lS}>NOTES</label><textarea value={modalData.notes||''} onChange={e=>setModalData({...modalData,notes:e.target.value})} rows={2} style={{...iS,fontFamily:'inherit',resize:'vertical'}}/></div>
+
+          {/* ── Plants / Locations ── */}
+          <div style={{fontSize:12,fontWeight:700,color:'#003250',marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040',display:'flex',justifyContent:'space-between'}}>
+            <span>PLANTS / LOCATIONS</span>
+            <button onClick={()=>setModalData(p=>({...p,plants:[...(p.plants||[]),{name:'',address:'',city:'',state:'',country:''}]}))} style={{padding:'2px 8px',borderRadius:4,border:'1px dashed #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>+ Add Plant</button>
+          </div>
+          <div style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:8,border:'1px solid #eef0f2'}}>
+            <div style={{fontSize:10,fontWeight:600,color:'#8b919e',marginBottom:4}}>Main Address</div>
+            <input value={modalData.address||''} onChange={e=>setModalData({...modalData,address:e.target.value})} placeholder="Street address" style={{...iS,marginBottom:6}}/>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+              <div><label style={lS}>CITY</label><input value={modalData.city||''} onChange={e=>setModalData({...modalData,city:e.target.value})} style={iS}/></div>
+              <div><label style={lS}>STATE</label><input value={modalData.state||''} onChange={e=>setModalData({...modalData,state:e.target.value})} style={iS}/></div>
+              <div><label style={lS}>COUNTRY</label><input value={modalData.country||''} onChange={e=>setModalData({...modalData,country:e.target.value})} style={iS}/></div>
+            </div>
+          </div>
+          {(modalData.plants||[]).map((pl,i)=>(
+            <div key={i} style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:4,border:'1px solid #eef0f2',position:'relative'}}>
+              <button onClick={()=>{const pls=[...(modalData.plants||[])];pls.splice(i,1);setModalData(p=>({...p,plants:pls}));}} style={{position:'absolute',top:6,right:8,border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:14}}>x</button>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:6,marginBottom:4}}>
+                <div><label style={lS}>PLANT NAME</label><input value={pl.name||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],name:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
+                <div><label style={lS}>ADDRESS</label><input value={pl.address||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],address:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+                <div><label style={lS}>CITY</label><input value={pl.city||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],city:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
+                <div><label style={lS}>STATE</label><input value={pl.state||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],state:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
+                <div><label style={lS}>COUNTRY</label><input value={pl.country||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],country:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
+              </div>
+            </div>
+          ))}
+
+          {/* ── Contacts ── */}
+          <div style={{fontSize:12,fontWeight:700,color:'#003250',marginTop:12,marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040',display:'flex',justifyContent:'space-between'}}>
+            <span>CONTACTS</span>
+            <button onClick={()=>setModalData(p=>({...p,contacts:[...(p.contacts||[]),{name:'',role:'',email:'',phone:'',isPrimary:false}]}))} style={{padding:'2px 8px',borderRadius:4,border:'1px dashed #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>+ Add Contact</button>
+          </div>
+          {(modalData.contacts||[]).length===0&&<div style={{fontSize:10,color:'#8b919e',marginBottom:8,fontStyle:'italic'}}>No contacts. Use the legacy contact field or add structured contacts.</div>}
+          {/* Legacy single contact */}
+          {(modalData.contacts||[]).length===0&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:8}}>
+            <div><label style={lS}>CONTACT</label><input value={modalData.contact||''} onChange={e=>setModalData({...modalData,contact:e.target.value})} style={iS}/></div>
+            <div><label style={lS}>EMAIL</label><input value={modalData.email||''} onChange={e=>setModalData({...modalData,email:e.target.value})} style={iS}/></div>
+            <div><label style={lS}>PHONE</label><input value={modalData.phone||''} onChange={e=>setModalData({...modalData,phone:e.target.value})} style={iS}/></div>
+          </div>}
+          {(modalData.contacts||[]).map((ct,i)=>(
+            <div key={i} style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:4,border:'1px solid #eef0f2',position:'relative'}}>
+              <button onClick={()=>{const cts=[...(modalData.contacts||[])];cts.splice(i,1);setModalData(p=>({...p,contacts:cts}));}} style={{position:'absolute',top:6,right:8,border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:14}}>x</button>
+              <div style={{display:'grid',gridTemplateColumns:'1.5fr 1.5fr 1.5fr 1fr',gap:6}}>
+                <div><label style={lS}>NAME</label><input value={ct.name||''} onChange={e=>{const cts=[...(modalData.contacts||[])];cts[i]={...cts[i],name:e.target.value};setModalData(p=>({...p,contacts:cts}));}} style={iS}/></div>
+                <div><label style={lS}>ROLE / TITLE</label><input value={ct.role||''} onChange={e=>{const cts=[...(modalData.contacts||[])];cts[i]={...cts[i],role:e.target.value};setModalData(p=>({...p,contacts:cts}));}} placeholder="Plant Manager" style={iS}/></div>
+                <div><label style={lS}>EMAIL</label><input value={ct.email||''} onChange={e=>{const cts=[...(modalData.contacts||[])];cts[i]={...cts[i],email:e.target.value};setModalData(p=>({...p,contacts:cts}));}} style={iS}/></div>
+                <div><label style={lS}>PHONE</label><input value={ct.phone||''} onChange={e=>{const cts=[...(modalData.contacts||[])];cts[i]={...cts[i],phone:e.target.value};setModalData(p=>({...p,contacts:cts}));}} style={iS}/></div>
+              </div>
+              <label style={{fontSize:9,display:'flex',alignItems:'center',gap:4,marginTop:4,color:'#8b919e'}}><input type="checkbox" checked={ct.isPrimary||false} onChange={e=>{const cts=[...(modalData.contacts||[])];cts[i]={...cts[i],isPrimary:e.target.checked};setModalData(p=>({...p,contacts:cts}));}} /> Primary contact</label>
+            </div>
+          ))}
+
+          {/* ── Equipment ── */}
+          <div style={{fontSize:12,fontWeight:700,color:'#003250',marginTop:12,marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040',display:'flex',justifyContent:'space-between'}}>
+            <span>INSTALLED EQUIPMENT</span>
+            <button onClick={()=>setModalData(p=>({...p,equipment:[...(p.equipment||[]),{model:'',serial:'',year:'',status:'active',companyId:'',notes:''}]}))} style={{padding:'2px 8px',borderRadius:4,border:'1px dashed #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>+ Add Equipment</button>
+          </div>
+          {(modalData.equipment||[]).map((eq,i)=>(
+            <div key={i} style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:4,border:'1px solid #eef0f2',position:'relative'}}>
+              <button onClick={()=>{const eqs=[...(modalData.equipment||[])];eqs.splice(i,1);setModalData(p=>({...p,equipment:eqs}));}} style={{position:'absolute',top:6,right:8,border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:14}}>x</button>
+              <div style={{display:'grid',gridTemplateColumns:'1.2fr 1.5fr 1fr 0.6fr 0.8fr',gap:6}}>
+                <div><label style={lS}>BRAND</label><select value={eq.companyId||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],companyId:e.target.value||null};setModalData(p=>({...p,equipment:eqs}));}} style={iS}><option value="">Select...</option>{dbCos.map(co=><option key={co.id} value={co.id}>{co.name}</option>)}</select></div>
+                <div><label style={lS}>MODEL</label><input value={eq.model||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],model:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} placeholder="e.g. VP125" style={iS}/></div>
+                <div><label style={lS}>SERIAL #</label><input value={eq.serial||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],serial:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} style={iS}/></div>
+                <div><label style={lS}>YEAR</label><input type="number" value={eq.year||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],year:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} style={iS}/></div>
+                <div><label style={lS}>STATUS</label><select value={eq.status||'active'} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],status:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} style={iS}><option value="active">Active</option><option value="service">Service</option><option value="idle">Idle</option></select></div>
+              </div>
+              <div style={{marginTop:4}}><label style={lS}>EQUIPMENT NOTES</label><input value={eq.notes||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],notes:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} placeholder="Notes..." style={iS}/></div>
+            </div>
+          ))}
+
+          <div style={{display:'flex',gap:8,marginTop:16,paddingTop:12,borderTop:'1px solid #e2e4e9'}}>
             <button onClick={()=>saveCust(modalData,showModal==='addCust')} style={{flex:1,padding:10,background:'#003250',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>{showModal==='addCust'?'Add Customer':'Save Changes'}</button>
             <button onClick={()=>setShowModal(null)} style={{padding:'10px 20px',background:'#f3f4f6',color:'#8b919e',border:'none',borderRadius:8,cursor:'pointer'}}>Cancel</button></div>
         </div>}
