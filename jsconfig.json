@@ -1,1 +1,2 @@
-{"compilerOptions":{"paths":{"@/*":["./*"]}}}
+DATABASE_URL="postgresql://user:pass@host/db?sslmode=require"
+JWT_SECRET="change-me-to-random-64-chars"
