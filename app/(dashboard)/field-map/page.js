@@ -116,7 +116,6 @@ export default function FieldMapPage() {
         });
       });
     });
-    });
   }, [customers, brandFilter, search, countryFilter, stateFilter, industryFilter, selected]);
 
   const selectCustomer = (c) => { setSelected(c); if (c.lat && c.lng && mapInstance.current) mapInstance.current.flyTo([c.lat, c.lng], Math.max(mapInstance.current.getZoom(), 9), { duration: 0.6 }); };
