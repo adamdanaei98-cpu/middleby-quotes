@@ -258,13 +258,16 @@ export default function FieldMapPage() {
               {/* Expandable plants (show when selected) */}
               {isSel && (c.plants || []).length > 0 && <div style={{ background: '#f4f6f8', borderTop: '1px solid #eef0f2' }}>
                 {(c.plants || []).map((pl, pi) => (
-                  <div key={pi} style={{ padding: '4px 12px 4px 24px', borderBottom: '1px solid #eef0f2' }}>
+                  <div key={pi} onClick={(e) => { e.stopPropagation(); if (pl.lat && pl.lng && mapInstance.current) mapInstance.current.flyTo([pl.lat, pl.lng], 12, { duration: 0.6 }); }} style={{ padding: '4px 12px 4px 24px', borderBottom: '1px solid #eef0f2', cursor: pl.lat ? 'pointer' : 'default' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <span style={{ fontSize: 10, fontWeight: 600, color: C.navy }}>◆ {pl.name}</span>
                         <span style={{ fontSize: 9, color: C.muted, marginLeft: 6 }}>{[pl.city, pl.state].filter(Boolean).join(', ')}</span>
                       </div>
-                      {(pl.equipment || []).length > 0 && <span style={{ fontSize: 8, color: C.muted }}>{(pl.equipment || []).length} equip</span>}
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        {(pl.equipment || []).length > 0 && <span style={{ fontSize: 8, color: C.muted }}>{(pl.equipment || []).length} equip</span>}
+                        {!pl.lat && <span style={{ fontSize: 7, color: '#d97706' }}>No coords</span>}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -297,7 +300,8 @@ export default function FieldMapPage() {
             {selected.lat && selected.lng && <a href={`https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`} target="_blank" rel="noopener" style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.blue, color: C.blue, fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Directions</a>}
             {selected.phone && <a href={'tel:' + selected.phone.replace(/[^0-9+]/g, '')} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.green, color: C.green, fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Call</a>}
             {selected.email && <a href={'mailto:' + selected.email} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #d97706', color: '#d97706', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Email</a>}
-            {canEdit && <button onClick={() => setEditForm({ ...selected, repIds: (selected.fieldMapReps || []).map(r => r.userId), equipment: (selected.equipment || []).map(e => ({ ...e, companyId: e.companyId || e.company?.id || null })), contacts: selected.contacts || [], plants: selected.plants || [] })} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.muted, color: C.muted, fontSize: 10, fontWeight: 600, background: 'none', cursor: 'pointer' }}>Edit</button>}
+            {canEdit && <button onClick={() => setEditForm({ ...selected, repIds: (selected.fieldMapReps || []).map(r => r.userId), equipment: (selected.equipment || []).map(e => ({ ...e, companyId: e.companyId || e.company?.id || null })), contacts: selected.contacts || [], plants: (selected.plants || []).map(p => ({ ...p, equipment: (p.equipment || []).map(e => ({ ...e, companyId: e.companyId || e.company?.id || null })) })) })} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.muted, color: C.muted, fontSize: 10, fontWeight: 600, background: 'none', cursor: 'pointer' }}>Edit</button>}
+            {canEdit && <button onClick={async () => { if (!confirm('Delete ' + selected.name + '?')) return; await fetch('/api/field-map/customers/' + selected.id, { method: 'DELETE' }); const r = await fetch('/api/field-map/customers'); const d = await r.json(); setCustomers(d.customers || []); setSelected(null); }} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #dc2626', color: '#dc2626', fontSize: 10, fontWeight: 600, background: 'none', cursor: 'pointer' }}>Delete</button>}
           </div>
 
           {/* Contacts */}

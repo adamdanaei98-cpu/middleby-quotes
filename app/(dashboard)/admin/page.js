@@ -235,17 +235,21 @@ export default function AdminPage() {
   };
   const saveCust = async (data, isNew) => {
     setErr('');try{
-      // Save basic fields
-      const basicData = { id: data.id, name: data.name, plant: data.plant, address: data.address, contact: data.contact, email: data.email, phone: data.phone, keywords: data.keywords, notes: data.notes, companyId: data.companyId, active: data.active !== false };
-      const r=await fetch('/api/customers',{method:isNew?'POST':'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(basicData)});const d=await r.json();if(!r.ok){setErr(d.error);return;}
-      const custId = isNew ? d.customer.id : data.id;
-      // Always save extended fields through field-map API
-      const extData = { ...data, name: data.name, id: custId };
-      try { await fetch('/api/field-map/customers/' + custId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(extData) }); } catch {}
-      if(isNew)setCustomers(p=>[...p,d.customer]);else setCustomers(p=>p.map(c=>c.id===custId?{...d.customer,...data}:c));
-      // Also reload to get the full data with plants/contacts/equipment
+      if (isNew) {
+        const r = await fetch('/api/field-map/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const d = await r.json(); if (!r.ok) { setErr(d.error); return; }
+      } else {
+        const r = await fetch('/api/field-map/customers/' + data.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const d = await r.json(); if (!r.ok) { setErr(d.error); return; }
+      }
+      // Reload
       try { const fr = await fetch('/api/customers'); const fd = await fr.json(); if (fd.customers) setCustomers(fd.customers); } catch {}
       setShowModal(null);setOk(isNew?'Customer added':'Customer updated');setTimeout(()=>setOk(''),3000);}catch(e){setErr(e.message);}
+  };
+      // Reload full list
+      try { const fr = await fetch('/api/customers'); const fd = await fr.json(); if (fd.customers) setCustomers(fd.customers); } catch {}
+      setShowModal(null); setOk(isNew ? 'Customer added' : 'Customer updated'); setTimeout(() => setOk(''), 3000);
+    } catch(e) { setErr(e.message); }
   };
 
   const TB=({id,l})=><button onClick={()=>setTab(id)} style={{padding:'7px 14px',borderRadius:6,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,background:tab===id?'#fff':'transparent',color:tab===id?C.navy:'#888',boxShadow:tab===id?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>;

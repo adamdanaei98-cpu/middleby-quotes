@@ -34,7 +34,10 @@ export default function CustomerForm({ form, setForm, companies, allCustomers, o
 
   const custList = fullCustomers.length > 0 ? fullCustomers : allCustomers;
   const uniqueCustomers = [...new Map(custList.map(c => [c.id, c])).values()].sort((a, b) => a.name.localeCompare(b.name));
-  const allPlantNames = [...new Set(custList.flatMap(c => (c.plants || []).map(p => p.name)).filter(Boolean))].sort();
+  
+  // Plant names scoped to currently selected customer only
+  const currentCustPlants = form.id ? (fullCustomers.find(c => c.id === form.id)?.plants || []) : [];
+  const currentPlantNames = currentCustPlants.map(p => p.name).filter(Boolean);
 
   // Equipment grouped by plant
   const addEquipToPlant = (plantIdx) => {
@@ -65,7 +68,7 @@ export default function CustomerForm({ form, setForm, companies, allCustomers, o
         <div style={lS}>SELECT EXISTING OR CREATE NEW</div>
         <select value={form.id || '__new__'} onChange={e => selectExistingCustomer(e.target.value)} style={{ ...iS }}>
           <option value="__new__">+ New Customer</option>
-          {uniqueCustomers.map(c => <option key={c.id} value={c.id}>{c.name}{c.city ? ' — ' + c.city + (c.state ? ', ' + c.state : '') : ''}</option>)}
+          {uniqueCustomers.map(c => <option key={c.id} value={c.id}>{c.name}{c.city ? ' — ' + c.city + (c.state ? ', ' + c.state : '') : ''}{(c.plants||[]).length > 0 ? ' (' + (c.plants||[]).length + ' plants)' : ''}</option>)}
         </select>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
@@ -116,21 +119,25 @@ export default function CustomerForm({ form, setForm, companies, allCustomers, o
             {/* Plant location */}
             <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 2.5fr auto', gap: 6, marginBottom: 6 }}>
               <div><div style={lS}>PLANT NAME</div>
-                <select value={pl.name && allPlantNames.includes(pl.name) ? pl.name : pl.name ? '__custom__' : ''} onChange={e => {
+                <select value={pl.name && (currentPlantNames.includes(pl.name) || pl.name.includes('(HQ)')) ? pl.name : pl.name ? '__custom__' : ''} onChange={e => {
                   const val = e.target.value; const pls = [...(form.plants || [])];
-                  if (val === '__custom__' || val === '') { pls[pi] = { ...pls[pi], name: '' }; }
-                  else {
+                  if (val === '__hq__') {
+                    pls[pi] = { ...pls[pi], name: (form.name || 'HQ') + ' (HQ)', address: form.address || '', city: form.city || '', state: form.state || '', country: form.country || '', lat: form.lat || '', lng: form.lng || '', equipment: pls[pi].equipment || [] };
+                  } else if (val === '__custom__' || val === '') {
+                    pls[pi] = { ...pls[pi], name: '' };
+                  } else {
                     pls[pi] = { ...pls[pi], name: val };
-                    const existing = custList.flatMap(c => (c.plants || []).filter(p => p.name === val));
-                    if (existing.length > 0 && !pls[pi].address) { pls[pi] = { ...pls[pi], address: existing[0].address || '', city: existing[0].city || '', state: existing[0].state || '', country: existing[0].country || '', lat: existing[0].lat || '', lng: existing[0].lng || '', equipment: pls[pi].equipment || [] }; }
+                    const existing = currentCustPlants.find(p => p.name === val);
+                    if (existing) { pls[pi] = { ...pls[pi], address: existing.address || '', city: existing.city || '', state: existing.state || '', country: existing.country || '', lat: existing.lat || '', lng: existing.lng || '', equipment: (existing.equipment || []).map(eq => ({ ...eq, companyId: eq.companyId || eq.company?.id || null })) }; }
                   }
                   setForm(p => ({ ...p, plants: pls }));
                 }} style={iS}>
-                  <option value="">Select...</option>
-                  {allPlantNames.map(n => <option key={n} value={n}>{n}</option>)}
+                  <option value="">Select plant...</option>
+                  <option value="__hq__">\u{1F4CD} HQ (same as main address)</option>
+                  {currentPlantNames.map(n => <option key={n} value={n}>{n}</option>)}
                   <option value="__custom__">+ New Plant</option>
                 </select>
-                {(!pl.name || !allPlantNames.includes(pl.name)) && <input value={pl.name || ''} onChange={e => { const pls = [...(form.plants || [])]; pls[pi] = { ...pls[pi], name: e.target.value }; setForm(p => ({ ...p, plants: pls })); }} placeholder="New plant name..." style={{ ...iS, marginTop: 4 }} />}
+                {(!pl.name || (!currentPlantNames.includes(pl.name) && !pl.name.includes('(HQ)'))) && <input value={pl.name || ''} onChange={e => { const pls = [...(form.plants || [])]; pls[pi] = { ...pls[pi], name: e.target.value }; setForm(p => ({ ...p, plants: pls })); }} placeholder="New plant name..." style={{ ...iS, marginTop: 4 }} />}
               </div>
               <div><div style={lS}>ADDRESS</div><input value={pl.address || ''} onChange={e => { const pls = [...(form.plants || [])]; pls[pi] = { ...pls[pi], address: e.target.value }; setForm(p => ({ ...p, plants: pls })); }} style={iS} /></div>
               <div style={{ alignSelf: 'flex-end' }}><button onClick={async () => { const a = [pl.address, pl.city, pl.state, pl.country].filter(Boolean).join(', '); if (!a) return; const r = await geocode(a); if (r) { const pls = [...(form.plants || [])]; pls[pi] = { ...pls[pi], lat: r.lat, lng: r.lng }; setForm(p => ({ ...p, plants: pls })); } else alert('Not found'); }} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid ' + C.navy, background: 'none', color: C.navy, fontSize: 9, fontWeight: 600, cursor: 'pointer' }}>📍</button></div>
@@ -189,9 +196,10 @@ export default function CustomerForm({ form, setForm, companies, allCustomers, o
       </div>
       <div style={{ marginBottom: 12 }}><div style={lS}>NOTES</div><textarea value={form.notes || ''} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Account notes..." style={{ ...iS, fontFamily: 'inherit', resize: 'vertical' }} /></div>
 
-      {/* Save / Cancel */}
+      {/* Save / Cancel / Delete */}
       <div style={{ display: 'flex', gap: 8, marginTop: 16, paddingTop: 12, borderTop: '1px solid #e2e4e9' }}>
         <button onClick={onSave} style={{ flex: 1, padding: 10, background: C.navy, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{isNew && !form.id ? 'Add Customer' : 'Save Changes'}</button>
+        {form.id && <button onClick={async () => { if (!confirm('Delete this customer? This will deactivate it.')) return; try { await fetch('/api/field-map/customers/' + form.id, { method: 'DELETE' }); onCancel(); window.location.reload(); } catch (e) { alert(e.message); } }} style={{ padding: '10px 16px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>Delete</button>}
         <button onClick={onCancel} style={{ padding: '10px 20px', background: '#f3f4f6', color: '#8b919e', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
       </div>
     </div>
