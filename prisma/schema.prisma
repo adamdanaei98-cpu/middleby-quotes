@@ -143,6 +143,7 @@ model CustomerPlant {
   phone      String?
   notes      String?
   createdAt  DateTime @default(now())
+  equipment  Equipment[]
 }
 
 // ─── CUSTOMER CONTACTS ────────────────────────────────────────
@@ -163,11 +164,13 @@ model Equipment {
   id         String   @id @default(cuid())
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  plantId    String?
+  plant      CustomerPlant? @relation(fields: [plantId], references: [id], onDelete: SetNull)
   model      String
   serial     String?
   year       Int?
-  status     String   @default("active") // active, service, idle
-  companyId  String?  // which brand (RVP, Thurne, etc.)
+  status     String   @default("active")
+  companyId  String?
   company    Company? @relation(fields: [companyId], references: [id])
   notes      String?
   createdAt  DateTime @default(now())

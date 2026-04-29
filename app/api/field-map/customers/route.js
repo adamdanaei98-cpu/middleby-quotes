@@ -10,9 +10,9 @@ export async function GET() {
     include: {
       primaryCompany: { select: { id: true, key: true, name: true, color: true } },
       company: { select: { id: true, key: true, name: true, color: true } },
-      equipment: { include: { company: { select: { id: true, name: true, color: true } } } },
+      equipment: { include: { company: { select: { id: true, name: true, color: true } }, plant: { select: { id: true, name: true } } } },
       contacts: { orderBy: { isPrimary: 'desc' } },
-      plants: true,
+      plants: { include: { equipment: { include: { company: { select: { id: true, name: true, color: true } } } } } },
       fieldMapReps: { include: { user: { select: { id: true, name: true, email: true, role: true, primaryCompanyId: true, primaryCompany: { select: { name: true, color: true } } } } } },
       visits: { orderBy: { visitDate: 'desc' }, take: 1, include: { user: { select: { name: true } } } },
     },
@@ -27,39 +27,31 @@ export async function POST(request) {
   if (!user.isAdmin && user.role !== 'manager' && user.role !== 'supervisor') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const data = await request.json();
-    const customer = await db.customer.create({
-      data: {
-        name: data.name,
-        plant: data.plant || null,
-        address: data.address || null,
-        contact: data.contact || null,
-        contactRole: data.contactRole || null,
-        email: data.email || null,
-        phone: data.phone || null,
-        city: data.city || null,
-        state: data.state || null,
-        country: data.country || null,
-        lat: data.lat ? parseFloat(data.lat) : null,
-        lng: data.lng ? parseFloat(data.lng) : null,
-        concept: data.concept || null,
-        notes: data.notes || null,
-        keywords: data.keywords || [],
-        primaryCompanyId: data.primaryCompanyId || null,
-        companyId: data.companyId || data.primaryCompanyId || null,
-        equipment: data.equipment?.length ? {
-          create: data.equipment.map(e => ({ model: e.model, serial: e.serial || null, year: e.year ? parseInt(e.year) : null, status: e.status || 'active', companyId: e.companyId || null, notes: e.notes || null })),
-        } : undefined,
-        contacts: data.contacts?.length ? {
-          create: data.contacts.map(c => ({ name: c.name, role: c.role || null, email: c.email || null, phone: c.phone || null, isPrimary: c.isPrimary || false })),
-        } : undefined,
-        plants: data.plants?.length ? {
-          create: data.plants.map(p => ({ name: p.name, address: p.address || null, city: p.city || null, state: p.state || null, country: p.country || null, lat: p.lat ? parseFloat(p.lat) : null, lng: p.lng ? parseFloat(p.lng) : null, contact: p.contact || null, phone: p.phone || null, notes: p.notes || null })),
-        } : undefined,
-        fieldMapReps: data.repIds?.length ? {
-          create: data.repIds.map(uid => ({ userId: uid })),
-        } : undefined,
-      },
-      include: { primaryCompany: true, equipment: { include: { company: true } }, contacts: true, plants: true, fieldMapReps: { include: { user: true } } },
+    const customer = await db.$transaction(async (tx) => {
+      const cust = await tx.customer.create({
+        data: {
+          name: data.name, plant: data.plant || null, address: data.address || null,
+          contact: data.contact || null, contactRole: data.contactRole || null,
+          email: data.email || null, phone: data.phone || null,
+          city: data.city || null, state: data.state || null, country: data.country || null,
+          lat: data.lat ? parseFloat(data.lat) : null, lng: data.lng ? parseFloat(data.lng) : null,
+          concept: data.concept || null, notes: data.notes || null, keywords: data.keywords || [],
+          primaryCompanyId: data.primaryCompanyId || null, companyId: data.companyId || data.primaryCompanyId || null,
+          contacts: data.contacts?.length ? { create: data.contacts.map(c => ({ name: c.name, role: c.role || null, email: c.email || null, phone: c.phone || null, isPrimary: c.isPrimary || false })) } : undefined,
+        },
+      });
+      // Create plants with their equipment
+      for (const p of (data.plants || [])) {
+        const plant = await tx.customerPlant.create({ data: { customerId: cust.id, name: p.name, address: p.address || null, city: p.city || null, state: p.state || null, country: p.country || null, lat: p.lat ? parseFloat(p.lat) : null, lng: p.lng ? parseFloat(p.lng) : null, contact: p.contact || null, phone: p.phone || null, notes: p.notes || null } });
+        for (const e of (p.equipment || [])) {
+          await tx.equipment.create({ data: { customerId: cust.id, plantId: plant.id, model: e.model, serial: e.serial || null, year: e.year ? parseInt(e.year) : null, status: e.status || 'active', companyId: e.companyId || null, notes: e.notes || null } });
+        }
+      }
+      // Create any loose equipment (not tied to a plant)
+      for (const e of (data.equipment || [])) {
+        await tx.equipment.create({ data: { customerId: cust.id, model: e.model, serial: e.serial || null, year: e.year ? parseInt(e.year) : null, status: e.status || 'active', companyId: e.companyId || null, notes: e.notes || null } });
+      }
+      return tx.customer.findUnique({ where: { id: cust.id }, include: { primaryCompany: true, equipment: { include: { company: true } }, contacts: true, plants: { include: { equipment: { include: { company: true } } } } } });
     });
     return NextResponse.json({ customer });
   } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }

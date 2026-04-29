@@ -86,22 +86,36 @@ export default function FieldMapPage() {
     return (a.name||'').localeCompare(b.name||'');
   });
 
-  // Update markers
+  // Update markers - HQ (circles) + Plants (diamonds)
   useEffect(() => {
     if (!mapInstance.current) return;
     import('leaflet').then(L => {
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
       filtered.forEach(c => {
-        if (!c.lat || !c.lng) return;
         const color = c.primaryCompany?.color || c.company?.color || C.navy;
         const isSel = selected?.id === c.id;
-        const sz = isSel ? 28 : 20;
-        const icon = L.divIcon({ className: '', html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${color};border:2.5px solid ${isSel?C.red:C.navy};box-shadow:${isSel?'0 0 10px '+C.red:'0 1px 3px rgba(0,0,0,.25)'};cursor:pointer;transition:all .15s"></div>`, iconSize: [sz, sz], iconAnchor: [sz/2, sz/2] });
-        const marker = L.marker([c.lat, c.lng], { icon }).addTo(mapInstance.current);
-        marker.on('click', () => selectCustomer(c));
-        markersRef.current.push(marker);
+        // HQ marker (circle)
+        if (c.lat && c.lng) {
+          const sz = isSel ? 28 : 20;
+          const icon = L.divIcon({ className: '', html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${color};border:2.5px solid ${isSel?C.red:C.navy};box-shadow:${isSel?'0 0 10px '+C.red:'0 1px 3px rgba(0,0,0,.25)'};cursor:pointer"></div>`, iconSize: [sz, sz], iconAnchor: [sz/2, sz/2] });
+          const marker = L.marker([c.lat, c.lng], { icon }).addTo(mapInstance.current);
+          marker.bindTooltip(c.name + ' (HQ)', { direction: 'top', offset: [0, -10] });
+          marker.on('click', () => selectCustomer(c));
+          markersRef.current.push(marker);
+        }
+        // Plant markers (smaller diamonds)
+        (c.plants || []).forEach(pl => {
+          if (!pl.lat || !pl.lng) return;
+          const sz = isSel ? 16 : 12;
+          const icon = L.divIcon({ className: '', html: `<div style="width:${sz}px;height:${sz}px;border-radius:2px;transform:rotate(45deg);background:${color};border:2px solid ${C.navy};opacity:0.85;cursor:pointer"></div>`, iconSize: [sz, sz], iconAnchor: [sz/2, sz/2] });
+          const marker = L.marker([pl.lat, pl.lng], { icon }).addTo(mapInstance.current);
+          marker.bindTooltip(c.name + ' — ' + pl.name, { direction: 'top', offset: [0, -6] });
+          marker.on('click', () => selectCustomer(c));
+          markersRef.current.push(marker);
+        });
       });
+    });
     });
   }, [customers, brandFilter, search, countryFilter, stateFilter, industryFilter, selected]);
 
@@ -220,23 +234,42 @@ export default function FieldMapPage() {
           const isSel = selected?.id === c.id;
           const dist = myLocation && c.lat && c.lng ? haversine(myLocation.lat, myLocation.lng, c.lat, c.lng) : null;
           const lastVisit = c.visits?.[0];
+          const plantCount = (c.plants || []).length;
+          const equipCount = (c.equipment?.length || 0) + (c.plants || []).reduce((t, p) => t + (p.equipment?.length || 0), 0);
           return (
-            <div key={c.id} onClick={() => selectCustomer(c)} style={{ padding: '10px 12px', borderBottom: '1px solid #f0f1f3', cursor: 'pointer', background: isSel ? (co?.color || C.navy) + '10' : 'transparent', borderLeft: isSel ? '3px solid ' + (co?.color || C.navy) : '3px solid transparent' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#333' }}>{c.name}</div>
-                {dist !== null && <div style={{ fontSize: 9, color: C.blue, fontWeight: 700 }}>{Math.round(dist)} mi</div>}
+            <div key={c.id} style={{ borderBottom: '1px solid #eef0f2' }}>
+              {/* Customer header */}
+              <div onClick={() => selectCustomer(c)} style={{ padding: '8px 12px', cursor: 'pointer', background: isSel ? (co?.color || C.navy) + '10' : 'transparent', borderLeft: isSel ? '3px solid ' + (co?.color || C.navy) : '3px solid transparent' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#333' }}>{c.name}</div>
+                  {dist !== null && <div style={{ fontSize: 9, color: C.blue, fontWeight: 700 }}>{Math.round(dist)} mi</div>}
+                </div>
+                <div style={{ display: 'flex', gap: 4, marginTop: 2, alignItems: 'center' }}>
+                  {co && <span style={{ fontSize: 7, fontWeight: 700, color: '#fff', background: co.color, padding: '1px 5px', borderRadius: 6 }}>{co.name}</span>}
+                  {c.concept && <span style={{ fontSize: 8, color: C.muted }}>{c.concept}</span>}
+                </div>
+                <div style={{ fontSize: 9, color: C.muted, marginTop: 1 }}>HQ: {[c.city, c.state].filter(Boolean).join(', ') || c.address || '—'}</div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                  {plantCount > 0 && <span style={{ fontSize: 8, color: C.navy, fontWeight: 600 }}>{plantCount} plant{plantCount > 1 ? 's' : ''}</span>}
+                  {equipCount > 0 && <span style={{ fontSize: 8, color: C.muted }}>{equipCount} equip</span>}
+                  {lastVisit && <span style={{ fontSize: 8, color: C.green }}>Visited {new Date(lastVisit.visitDate).toLocaleDateString()}</span>}
+                  {!c.lat && <span style={{ fontSize: 7, color: '#d97706', fontWeight: 600 }}>No coords</span>}
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 4, marginTop: 3, alignItems: 'center' }}>
-                {co && <span style={{ fontSize: 8, fontWeight: 700, color: '#fff', background: co.color, padding: '1px 6px', borderRadius: 8 }}>{co.name}</span>}
-                {c.concept && <span style={{ fontSize: 8, color: C.muted }}>{c.concept}</span>}
-              </div>
-              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{[c.city, c.state].filter(Boolean).join(', ') || 'No location'}</div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 3 }}>
-                {(c.fieldMapReps?.length||0) > 0 && <span style={{ fontSize: 8, color: C.muted }}>{c.fieldMapReps.length} rep{c.fieldMapReps.length > 1 ? 's' : ''}</span>}
-                {(c.equipment?.length||0) > 0 && <span style={{ fontSize: 8, color: C.muted }}>{c.equipment.length} unit{c.equipment.length > 1 ? 's' : ''}</span>}
-                {lastVisit && <span style={{ fontSize: 8, color: C.green }}>Last visit: {new Date(lastVisit.visitDate).toLocaleDateString()}</span>}
-                {!c.lat && <span style={{ fontSize: 8, color: '#d97706', fontWeight: 600 }}>No coords</span>}
-              </div>
+              {/* Expandable plants (show when selected) */}
+              {isSel && (c.plants || []).length > 0 && <div style={{ background: '#f4f6f8', borderTop: '1px solid #eef0f2' }}>
+                {(c.plants || []).map((pl, pi) => (
+                  <div key={pi} style={{ padding: '4px 12px 4px 24px', borderBottom: '1px solid #eef0f2' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: C.navy }}>◆ {pl.name}</span>
+                        <span style={{ fontSize: 9, color: C.muted, marginLeft: 6 }}>{[pl.city, pl.state].filter(Boolean).join(', ')}</span>
+                      </div>
+                      {(pl.equipment || []).length > 0 && <span style={{ fontSize: 8, color: C.muted }}>{(pl.equipment || []).length} equip</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>}
             </div>
           );
         })}
