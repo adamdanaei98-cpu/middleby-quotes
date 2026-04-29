@@ -53,7 +53,7 @@ export default function LoginPage() {
         {demos.length > 0 && <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #e2e4e9' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#8b919e', marginBottom: 8, textAlign: 'center' }}>DEMO ACCOUNTS</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            {demos.map(a => <div key={a.email} onClick={() => { setEmail(a.email); setPassword('demo123'); setError(''); }} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e4e9', cursor: 'pointer', fontSize: 10, lineHeight: 1.4 }}><div style={{ fontWeight: 700, color: brand.navColor }}>{a.name}</div><div style={{ color: '#8b919e' }}>{a.role} • {a.level}</div></div>)}
+            {demos.map(a => <div key={a.email} onClick={() => { setEmail(a.email); setError(''); }} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e4e9', cursor: 'pointer', fontSize: 10, lineHeight: 1.4 }}><div style={{ fontWeight: 700, color: brand.navColor }}>{a.name}</div><div style={{ color: '#8b919e' }}>{a.role} • {a.level}</div></div>)}
           </div>
         </div>}
       </div>

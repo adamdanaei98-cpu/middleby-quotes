@@ -1,6 +1,7 @@
 // app/(dashboard)/admin/page.js
 'use client';
 import { useAuth } from '@/components/AuthProvider';
+import CustomerForm from '@/components/CustomerForm';
 import { useQuote } from '@/components/QuoteProvider';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -241,7 +242,10 @@ export default function AdminPage() {
       // Always save extended fields through field-map API
       const extData = { ...data, name: data.name, id: custId };
       try { await fetch('/api/field-map/customers/' + custId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(extData) }); } catch {}
-      if(isNew)setCustomers(p=>[...p,d.customer]);else setCustomers(p=>p.map(c=>c.id===custId?{...d.customer,...data}:c));setShowModal(null);setOk(isNew?'Customer added':'Customer updated');setTimeout(()=>setOk(''),3000);}catch(e){setErr(e.message);}
+      if(isNew)setCustomers(p=>[...p,d.customer]);else setCustomers(p=>p.map(c=>c.id===custId?{...d.customer,...data}:c));
+      // Also reload to get the full data with plants/contacts/equipment
+      try { const fr = await fetch('/api/customers'); const fd = await fr.json(); if (fd.customers) setCustomers(fd.customers); } catch {}
+      setShowModal(null);setOk(isNew?'Customer added':'Customer updated');setTimeout(()=>setOk(''),3000);}catch(e){setErr(e.message);}
   };
 
   const TB=({id,l})=><button onClick={()=>setTab(id)} style={{padding:'7px 14px',borderRadius:6,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,background:tab===id?'#fff':'transparent',color:tab===id?C.navy:'#888',boxShadow:tab===id?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>;
@@ -302,6 +306,66 @@ export default function AdminPage() {
           {/* Brand settings */}
           {isCorporate&&<div style={{background:'#fff',borderRadius:12,border:'2px solid '+C.navy,padding:20}}>
             <div style={{fontSize:14,fontWeight:700,color:C.navy,marginBottom:12}}>Brand Settings</div>
+
+            {/* Auto-theme from logo */}
+            <div style={{border:'2px dashed '+C.navy,borderRadius:10,padding:16,marginBottom:14,textAlign:'center',background:'#f8f9fb'}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.navy,marginBottom:4}}>Drop a logo to auto-theme</div>
+              <div style={{fontSize:9,color:C.muted,marginBottom:8}}>Upload your logo and we'll extract the brand colors automatically</div>
+              <input type="file" accept="image/*" onChange={async (e) => {
+                const file = e.target.files?.[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  const dataUrl = ev.target.result;
+                  // Extract colors from image using canvas
+                  const img = new Image();
+                  img.crossOrigin = 'anonymous';
+                  img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width; canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                    // Sample pixels, skip near-white and near-black
+                    const colors = {};
+                    for (let i = 0; i < data.length; i += 16) {
+                      const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+                      if (a < 128) continue; // skip transparent
+                      const brightness = (r + g + b) / 3;
+                      if (brightness > 240 || brightness < 15) continue; // skip white/black
+                      const saturation = Math.max(r,g,b) - Math.min(r,g,b);
+                      if (saturation < 20) continue; // skip grays
+                      // Quantize to reduce color count
+                      const qr = Math.round(r/32)*32, qg = Math.round(g/32)*32, qb = Math.round(b/32)*32;
+                      const key = `${qr},${qg},${qb}`;
+                      colors[key] = (colors[key]||0) + 1;
+                    }
+                    // Sort by frequency, get top colors
+                    const sorted = Object.entries(colors).sort((a,b) => b[1]-a[1]);
+                    if (sorted.length > 0) {
+                      const [r,g,b] = sorted[0][0].split(',').map(Number);
+                      const hex = '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+                      // Make a darker version for nav
+                      const darkR = Math.max(0, Math.round(r*0.4));
+                      const darkG = Math.max(0, Math.round(g*0.4));
+                      const darkB = Math.max(0, Math.round(b*0.4));
+                      const darkHex = '#' + [darkR,darkG,darkB].map(c => c.toString(16).padStart(2,'0')).join('');
+                      // Set nav color to dark version of dominant color
+                      setNavColor(darkHex);
+                      fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'navColor',value:darkHex})});
+                      // Set both logos
+                      saveNavLogo(dataUrl);
+                      savePdfLogo(dataUrl);
+                    }
+                  };
+                  img.src = dataUrl;
+                };
+                reader.readAsDataURL(file);
+              }} style={{display:'block',margin:'0 auto'}} />
+              {(navLogo || pdfLogo) && <div style={{marginTop:8,display:'flex',gap:8,justifyContent:'center'}}>
+                <div style={{width:30,height:30,borderRadius:6,background:navColor||'#002a3e',border:'1px solid #ccc'}} title="Nav color"/>
+              </div>}
+            </div>
+
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
               <div><div style={lS}>NAV BAR COLOR</div><input type="color" value={navColor||'#002a3e'} onChange={e=>{setNavColor(e.target.value);fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'navColor',value:e.target.value})});}} style={{width:'100%',height:30,borderRadius:6,border:'1px solid '+C.border,cursor:'pointer',padding:0}}/></div>
               <div><div style={lS}>APP NAME</div><input value={appName||'QUOTECRAFT'} onChange={e=>{setAppName(e.target.value);clearTimeout(st.an);st.an=setTimeout(()=>fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'appName',value:e.target.value})}),800);}} style={iS}/></div></div>
@@ -511,7 +575,12 @@ export default function AdminPage() {
 
       {/* ═══ UNIVERSAL MODAL ═══ */}
       {showModal&&<div className="modal-overlay" onClick={()=>setShowModal(null)}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:(showModal==='addCust'||showModal==='editCust')?780:500}}>
-        <div style={{fontSize:17,fontWeight:800,color:'#003250',marginBottom:16}}>{showModal==='addUser'?'Add User':showModal==='editUser'?'Edit User':showModal==='addCust'?'Add Customer':'Edit Customer'}</div>
+        {(showModal==='addCust'||showModal==='editCust') ? <div>
+          <div style={{borderBottom:'3px solid #003250',padding:'14px 0',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div style={{fontSize:18,fontWeight:800,color:'#003250'}}>{showModal==='addCust'?'Add New Customer':'Edit Customer'}</div>
+            <button onClick={()=>setShowModal(null)} style={{border:'none',background:'none',fontSize:20,cursor:'pointer',color:'#8b919e'}}>x</button>
+          </div>
+        </div> : <div style={{fontSize:17,fontWeight:800,color:'#003250',marginBottom:16}}>{showModal==='addUser'?'Add User':'Edit User'}</div>}
 
         {(showModal==='addUser'||showModal==='editUser')&&<div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
@@ -533,108 +602,7 @@ export default function AdminPage() {
         </div>}
 
         {(showModal==='addCust'||showModal==='editCust')&&<div>
-          {/* ── Customer Details ── */}
-          <div style={{fontSize:12,fontWeight:700,color:'#003250',marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040'}}>CUSTOMER DETAILS</div>
-          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:8,marginBottom:12}}>
-            <div><label style={lS}>CUSTOMER NAME *</label><input value={modalData.name||''} onChange={e=>setModalData({...modalData,name:e.target.value})} placeholder="e.g. Hormel Foods" list="adminCustNames" style={iS}/><datalist id="adminCustNames">{[...new Set(customers.map(c=>c.name))].sort().map(n=><option key={n} value={n}/>)}</datalist></div>
-            <div><label style={lS}>INDUSTRY / CONCEPT</label><input value={modalData.concept||''} onChange={e=>setModalData({...modalData,concept:e.target.value})} placeholder="Meat Processing" style={iS}/></div>
-            <div><label style={lS}>STATUS</label><select value={modalData.active===false?'inactive':'active'} onChange={e=>setModalData({...modalData,active:e.target.value==='active'})} style={iS}><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
-          </div>
-
-          {/* ── Plants / Locations ── */}
-          <div style={{fontSize:12,fontWeight:700,color:'#003250',marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040',display:'flex',justifyContent:'space-between'}}>
-            <span>PLANTS / LOCATIONS</span>
-            <button onClick={()=>setModalData(p=>({...p,plants:[...(p.plants||[]),{name:'',address:'',city:'',state:'',country:'',lat:'',lng:''}]}))} style={{padding:'2px 8px',borderRadius:4,border:'1px dashed #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>+ Add Plant</button>
-          </div>
-          {/* Main address */}
-          <div style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:6,border:'1px solid #eef0f2'}}>
-            <div style={{fontSize:10,fontWeight:600,color:'#8b919e',marginBottom:4}}>Main Address (HQ)</div>
-            <div style={{display:'flex',gap:6,marginBottom:6}}>
-              <input value={modalData.address||''} onChange={e=>setModalData({...modalData,address:e.target.value})} placeholder="Street address" style={{...iS,flex:1}}/>
-              <button onClick={async()=>{const a=[modalData.address,modalData.city,modalData.state,modalData.country].filter(Boolean).join(', ');if(!a)return;try{const r=await fetch('/api/field-map/geocode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:a})});if(r.ok){const d=await r.json();setModalData(p=>({...p,lat:d.lat,lng:d.lng}));}else alert('Not found');}catch{alert('Geocode failed');}}} style={{padding:'6px 10px',borderRadius:6,border:'1px solid #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>📍 Lookup</button>
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:6}}>
-              <div><label style={lS}>CITY</label><input value={modalData.city||''} onChange={e=>setModalData({...modalData,city:e.target.value})} style={iS}/></div>
-              <div><label style={lS}>STATE</label><input value={modalData.state||''} onChange={e=>setModalData({...modalData,state:e.target.value})} style={iS}/></div>
-              <div><label style={lS}>COUNTRY</label><input value={modalData.country||''} onChange={e=>setModalData({...modalData,country:e.target.value})} style={iS}/></div>
-              <div><label style={lS}>LAT</label><input type="number" step="any" value={modalData.lat||''} onChange={e=>setModalData({...modalData,lat:e.target.value})} style={iS}/></div>
-              <div><label style={lS}>LNG</label><input type="number" step="any" value={modalData.lng||''} onChange={e=>setModalData({...modalData,lng:e.target.value})} style={iS}/></div>
-            </div>
-          </div>
-          {/* Sub-plants */}
-          {(modalData.plants||[]).map((pl,i)=>(
-            <div key={i} style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:4,border:'1px solid #eef0f2',position:'relative'}}>
-              <button onClick={()=>{const pls=[...(modalData.plants||[])];pls.splice(i,1);setModalData(p=>({...p,plants:pls}));}} style={{position:'absolute',top:6,right:8,border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:14}}>x</button>
-              <div style={{display:'grid',gridTemplateColumns:'1.5fr 2.5fr auto',gap:6,marginBottom:4}}>
-                <div><label style={lS}>PLANT NAME</label><input value={pl.name||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],name:e.target.value};setModalData(p=>({...p,plants:pls}));}} list={'plantNames'+i} placeholder="e.g. Sioux City" style={iS}/><datalist id={'plantNames'+i}>{[...new Set(customers.flatMap(c=>(c.plants||[]).map(p=>p.name)).filter(Boolean))].sort().map(n=><option key={n} value={n}/>)}</datalist></div>
-                <div><label style={lS}>ADDRESS</label><input value={pl.address||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],address:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
-                <div style={{alignSelf:'flex-end'}}><button onClick={async()=>{const a=[pl.address,pl.city,pl.state,pl.country].filter(Boolean).join(', ');if(!a)return;try{const r=await fetch('/api/field-map/geocode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:a})});if(r.ok){const d=await r.json();const pls=[...(modalData.plants||[])];pls[i]={...pls[i],lat:d.lat,lng:d.lng};setModalData(p=>({...p,plants:pls}));}else alert('Not found');}catch{alert('Failed');}}} style={{padding:'6px 8px',borderRadius:6,border:'1px solid #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>📍</button></div>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:6}}>
-                <div><label style={lS}>CITY</label><input value={pl.city||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],city:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
-                <div><label style={lS}>STATE</label><input value={pl.state||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],state:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
-                <div><label style={lS}>COUNTRY</label><input value={pl.country||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],country:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
-                <div><label style={lS}>LAT</label><input type="number" step="any" value={pl.lat||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],lat:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
-                <div><label style={lS}>LNG</label><input type="number" step="any" value={pl.lng||''} onChange={e=>{const pls=[...(modalData.plants||[])];pls[i]={...pls[i],lng:e.target.value};setModalData(p=>({...p,plants:pls}));}} style={iS}/></div>
-              </div>
-            </div>
-          ))}
-
-          {/* ── Contacts ── */}
-          <div style={{fontSize:12,fontWeight:700,color:'#003250',marginTop:12,marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040',display:'flex',justifyContent:'space-between'}}>
-            <span>CONTACTS</span>
-            <button onClick={()=>setModalData(p=>({...p,contacts:[...(p.contacts||[]),{name:'',role:'',email:'',phone:'',isPrimary:false}]}))} style={{padding:'2px 8px',borderRadius:4,border:'1px dashed #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>+ Add Contact</button>
-          </div>
-          {(modalData.contacts||[]).length===0&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:8}}>
-            <div><label style={lS}>CONTACT</label><input value={modalData.contact||''} onChange={e=>setModalData({...modalData,contact:e.target.value})} style={iS}/></div>
-            <div><label style={lS}>EMAIL</label><input value={modalData.email||''} onChange={e=>setModalData({...modalData,email:e.target.value})} style={iS}/></div>
-            <div><label style={lS}>PHONE</label><input value={modalData.phone||''} onChange={e=>setModalData({...modalData,phone:e.target.value})} style={iS}/></div>
-          </div>}
-          {(modalData.contacts||[]).map((ct,i)=>(
-            <div key={i} style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:4,border:'1px solid #eef0f2',position:'relative'}}>
-              <button onClick={()=>{const cts=[...(modalData.contacts||[])];cts.splice(i,1);setModalData(p=>({...p,contacts:cts}));}} style={{position:'absolute',top:6,right:8,border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:14}}>x</button>
-              <div style={{display:'grid',gridTemplateColumns:'1.5fr 1.5fr 1.5fr 1fr',gap:6}}>
-                <div><label style={lS}>NAME</label><input value={ct.name||''} onChange={e=>{const cts=[...(modalData.contacts||[])];cts[i]={...cts[i],name:e.target.value};setModalData(p=>({...p,contacts:cts}));}} style={iS}/></div>
-                <div><label style={lS}>ROLE / TITLE</label><input value={ct.role||''} onChange={e=>{const cts=[...(modalData.contacts||[])];cts[i]={...cts[i],role:e.target.value};setModalData(p=>({...p,contacts:cts}));}} placeholder="Plant Manager" style={iS}/></div>
-                <div><label style={lS}>EMAIL</label><input value={ct.email||''} onChange={e=>{const cts=[...(modalData.contacts||[])];cts[i]={...cts[i],email:e.target.value};setModalData(p=>({...p,contacts:cts}));}} style={iS}/></div>
-                <div><label style={lS}>PHONE</label><input value={ct.phone||''} onChange={e=>{const cts=[...(modalData.contacts||[])];cts[i]={...cts[i],phone:e.target.value};setModalData(p=>({...p,contacts:cts}));}} style={iS}/></div>
-              </div>
-              <label style={{fontSize:9,display:'flex',alignItems:'center',gap:4,marginTop:4,color:'#8b919e'}}><input type="checkbox" checked={ct.isPrimary||false} onChange={e=>{const cts=[...(modalData.contacts||[])];cts[i]={...cts[i],isPrimary:e.target.checked};setModalData(p=>({...p,contacts:cts}));}} /> Primary contact</label>
-            </div>
-          ))}
-
-          {/* ── Equipment ── */}
-          <div style={{fontSize:12,fontWeight:700,color:'#003250',marginTop:12,marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040',display:'flex',justifyContent:'space-between'}}>
-            <span>INSTALLED EQUIPMENT</span>
-            <button onClick={()=>setModalData(p=>({...p,equipment:[...(p.equipment||[]),{model:'',serial:'',year:'',status:'active',companyId:'',notes:''}]}))} style={{padding:'2px 8px',borderRadius:4,border:'1px dashed #003250',background:'none',color:'#003250',fontSize:9,fontWeight:600,cursor:'pointer'}}>+ Add Equipment</button>
-          </div>
-          {(modalData.equipment||[]).map((eq,i)=>(
-            <div key={i} style={{background:'#f8f9fb',borderRadius:8,padding:10,marginBottom:4,border:'1px solid #eef0f2',position:'relative'}}>
-              <button onClick={()=>{const eqs=[...(modalData.equipment||[])];eqs.splice(i,1);setModalData(p=>({...p,equipment:eqs}));}} style={{position:'absolute',top:6,right:8,border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:14}}>x</button>
-              <div style={{display:'grid',gridTemplateColumns:'1.2fr 1.5fr 1fr 0.6fr 0.8fr',gap:6}}>
-                <div><label style={lS}>BRAND</label><select value={eq.companyId||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],companyId:e.target.value||null};setModalData(p=>({...p,equipment:eqs}));}} style={iS}><option value="">Select...</option>{dbCos.map(co=><option key={co.id} value={co.id}>{co.name}</option>)}</select></div>
-                <div><label style={lS}>MODEL</label><input value={eq.model||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],model:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} placeholder="e.g. VP125" style={iS}/></div>
-                <div><label style={lS}>SERIAL #</label><input value={eq.serial||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],serial:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} style={iS}/></div>
-                <div><label style={lS}>YEAR</label><input type="number" value={eq.year||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],year:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} style={iS}/></div>
-                <div><label style={lS}>STATUS</label><select value={eq.status||'active'} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],status:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} style={iS}><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
-              </div>
-              <div style={{marginTop:4}}><label style={lS}>EQUIPMENT NOTES</label><input value={eq.notes||''} onChange={e=>{const eqs=[...(modalData.equipment||[])];eqs[i]={...eqs[i],notes:e.target.value};setModalData(p=>({...p,equipment:eqs}));}} placeholder="Notes..." style={iS}/></div>
-            </div>
-          ))}
-
-          {/* ── Keywords & Notes (bottom) ── */}
-          <div style={{fontSize:12,fontWeight:700,color:'#003250',marginTop:12,marginBottom:6,paddingBottom:4,borderBottom:'1px solid #00325040'}}>KEYWORDS & NOTES</div>
-          <div style={{marginBottom:8}}><label style={lS}>KEYWORDS</label>
-            <div style={{display:'flex',flexWrap:'wrap',gap:4,padding:'6px 8px',border:'1px solid #e2e4e9',borderRadius:6,minHeight:34,alignItems:'center'}}>
-              {(modalData.keywords||[]).map((kw,i)=><span key={i} style={{fontSize:10,background:'#e0e7ff',color:'#3b5998',padding:'2px 8px',borderRadius:4,display:'flex',alignItems:'center',gap:4}}>{kw}<button onClick={()=>setModalData(p=>({...p,keywords:(p.keywords||[]).filter((_,j)=>j!==i)}))} style={{border:'none',background:'none',color:'#3b5998',cursor:'pointer',fontSize:12,padding:0}}>x</button></span>)}
-              <input placeholder="Type & press Enter..." onKeyDown={e=>{if(e.key==='Enter'||e.key===','){e.preventDefault();e.stopPropagation();const v=e.target.value.trim();if(v){setModalData(p=>({...p,keywords:[...(p.keywords||[]),v]}));e.target.value='';}}}} style={{border:'none',outline:'none',fontSize:11,flex:1,minWidth:100,padding:'2px 0'}}/>
-            </div>
-          </div>
-          <div style={{marginBottom:12}}><label style={lS}>NOTES</label><textarea value={modalData.notes||''} onChange={e=>setModalData({...modalData,notes:e.target.value})} rows={2} placeholder="Account notes..." style={{...iS,fontFamily:'inherit',resize:'vertical'}}/></div>
-
-          <div style={{display:'flex',gap:8,marginTop:16,paddingTop:12,borderTop:'1px solid #e2e4e9'}}>
-            <button onClick={()=>saveCust(modalData,showModal==='addCust')} style={{flex:1,padding:10,background:'#003250',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>{showModal==='addCust'?'Add Customer':'Save Changes'}</button>
-            <button onClick={()=>setShowModal(null)} style={{padding:'10px 20px',background:'#f3f4f6',color:'#8b919e',border:'none',borderRadius:8,cursor:'pointer'}}>Cancel</button></div>
+          <CustomerForm form={modalData} setForm={setModalData} companies={dbCos} allCustomers={customers} onSave={()=>saveCust(modalData,showModal==='addCust')} onCancel={()=>setShowModal(null)} isNew={showModal==='addCust'} />
         </div>}
       </div></div>}
 

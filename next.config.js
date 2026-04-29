@@ -1,6 +1,2 @@
-node_modules/
-.next/
-.env
-.env.local
-*.log
-.vercel
+/** @type {import('next').NextConfig} */
+module.exports = {};

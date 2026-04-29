@@ -2,6 +2,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/components/AuthProvider';
+import CustomerForm from '@/components/CustomerForm';
 
 const C = { navy: '#003250', blue: '#0074BB', red: '#E12C3E', muted: '#8b919e', border: '#e2e4e9', green: '#16a34a' };
 const VISIT_TYPES = { in_person: 'In-Person', phone: 'Phone', email: 'Email', virtual: 'Virtual' };
@@ -357,109 +358,16 @@ export default function FieldMapPage() {
 
       {/* ═══ EDIT CUSTOMER MODAL ═══ */}
       {editForm && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setEditForm(null)}>
-        <div style={{ background: '#fff', borderRadius: 14, width: 680, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-          {/* Header */}
-          <div style={{ borderBottom: '3px solid ' + C.navy, padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fff', zIndex: 10, borderRadius: '14px 14px 0 0' }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: C.navy }}>{editForm.id ? 'Edit Customer' : 'Add New Customer'}</div>
-            <button onClick={() => setEditForm(null)} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: C.muted }}>x</button>
+        <div style={{ background: '#fff', borderRadius: 14, width: 780, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+          <div style={{ borderBottom: '3px solid #003250', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fff', zIndex: 10, borderRadius: '14px 14px 0 0' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#003250' }}>{editForm.id ? 'Edit Customer' : 'Add New Customer'}</div>
+            <button onClick={() => setEditForm(null)} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#8b919e' }}>x</button>
           </div>
-
           <div style={{ padding: '16px 24px 24px' }}>
-            {/* ── SECTION: Customer Details ── */}
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid ' + C.navy + '40' }}>CUSTOMER DETAILS</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-              <div><div style={lS}>CUSTOMER NAME *</div><input value={editForm.name || ''} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Hormel Foods" list="custNames" style={iS} /><datalist id="custNames">{[...new Set(customers.map(c => c.name))].sort().map(n => <option key={n} value={n} />)}</datalist></div>
-              <div><div style={lS}>INDUSTRY / CONCEPT</div><input value={editForm.concept || ''} onChange={e => setEditForm(p => ({ ...p, concept: e.target.value }))} list="concepts" placeholder="e.g. Meat Processing" style={iS} /><datalist id="concepts">{industries.map(i => <option key={i} value={i} />)}</datalist></div>
-            </div>
-            <div style={{ marginBottom: 16 }}><div style={lS}>KEYWORDS</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '6px 8px', border: '1px solid ' + C.border, borderRadius: 6, minHeight: 34, alignItems: 'center' }}>
-                {(editForm.keywords || []).map((k, i) => <span key={i} style={{ background: '#e0e7ff', color: '#3b5998', padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>{k}<button onClick={() => setEditForm(p => ({ ...p, keywords: (p.keywords || []).filter((_, j) => j !== i) }))} style={{ border: 'none', background: 'none', color: '#3b5998', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}>x</button></span>)}
-                <input placeholder="Type & press Enter..." onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); e.stopPropagation(); const v = e.target.value.trim(); if (v) { setEditForm(p => ({ ...p, keywords: [...(p.keywords || []), v] })); e.target.value = ''; } } }} style={{ border: 'none', outline: 'none', fontSize: 11, flex: 1, minWidth: 100, padding: '2px 0' }} />
-              </div>
-            </div>
-            <div style={{ marginBottom: 16 }}><div style={lS}>NOTES</div><textarea value={editForm.notes || ''} onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Account notes..." style={{ ...iS, resize: 'vertical' }} /></div>
-
-            {/* ── SECTION: Plants ── */}
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid ' + C.navy + '40', display: 'flex', justifyContent: 'space-between' }}>
-              <span>PLANTS / LOCATIONS</span>
-              <button onClick={() => setEditForm(p => ({ ...p, plants: [...(p.plants || []), { name: '', address: '', city: '', state: '', country: '' }] }))} style={{ padding: '2px 10px', borderRadius: 4, border: '1px dashed ' + C.navy, background: 'none', color: C.navy, fontSize: 9, fontWeight: 600, cursor: 'pointer' }}>+ Add Plant</button>
-            </div>
-            {(editForm.plants || []).length === 0 && <div style={{ fontSize: 10, color: C.muted, marginBottom: 8, fontStyle: 'italic' }}>No plants added. Use the main address fields or add sub-plants.</div>}
-            {/* Main address (legacy/default) */}
-            <div style={{ background: '#f8f9fb', borderRadius: 8, padding: 12, marginBottom: 8, border: '1px solid #eef0f2' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: C.muted, marginBottom: 6 }}>Main Address</div>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}><input value={editForm.address || ''} onChange={e => setEditForm(p => ({ ...p, address: e.target.value }))} placeholder="Street address" style={{ ...iS, flex: 1 }} /><button onClick={async () => { const a = [editForm.address, editForm.city, editForm.state, editForm.country].filter(Boolean).join(', '); if (!a) return; const r = await geocode(a); if (r) setEditForm(p => ({ ...p, lat: r.lat, lng: r.lng })); else alert('Not found'); }} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid ' + C.blue, background: 'none', color: C.navy, fontSize: 9, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>📍 Lookup</button></div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 6 }}>
-                <div><div style={lS}>CITY</div><input value={editForm.city || ''} onChange={e => setEditForm(p => ({ ...p, city: e.target.value }))} style={iS} /></div>
-                <div><div style={lS}>STATE</div><input value={editForm.state || ''} onChange={e => setEditForm(p => ({ ...p, state: e.target.value }))} style={iS} /></div>
-                <div><div style={lS}>COUNTRY</div><input value={editForm.country || ''} onChange={e => setEditForm(p => ({ ...p, country: e.target.value }))} style={iS} /></div>
-                <div><div style={lS}>LAT</div><input type="number" step="any" value={editForm.lat || ''} onChange={e => setEditForm(p => ({ ...p, lat: e.target.value }))} style={iS} /></div>
-                <div><div style={lS}>LNG</div><input type="number" step="any" value={editForm.lng || ''} onChange={e => setEditForm(p => ({ ...p, lng: e.target.value }))} style={iS} /></div>
-              </div>
-            </div>
-            {/* Sub-plants */}
-            {(editForm.plants || []).map((pl, i) => (
-              <div key={i} style={{ background: '#f8f9fb', borderRadius: 8, padding: 12, marginBottom: 6, border: '1px solid #eef0f2', position: 'relative' }}>
-                <button onClick={() => { const pls = [...(editForm.plants || [])]; pls.splice(i, 1); setEditForm(p => ({ ...p, plants: pls })); }} style={{ position: 'absolute', top: 8, right: 8, border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 14 }}>x</button>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr auto', gap: 6, marginBottom: 6 }}>
-                  <div><div style={lS}>PLANT NAME</div><input value={pl.name || ''} onChange={e => { const pls = [...(editForm.plants || [])]; pls[i] = { ...pls[i], name: e.target.value }; setEditForm(p => ({ ...p, plants: pls })); }} placeholder="e.g. Austin Plant" style={iS} /></div>
-                  <div><div style={lS}>ADDRESS</div><input value={pl.address || ''} onChange={e => { const pls = [...(editForm.plants || [])]; pls[i] = { ...pls[i], address: e.target.value }; setEditForm(p => ({ ...p, plants: pls })); }} style={iS} /></div>
-                  <div style={{ alignSelf: 'flex-end' }}><button onClick={async () => { const a = [pl.address, pl.city, pl.state, pl.country].filter(Boolean).join(', '); if (!a) return; const r = await geocode(a); if (r) { const pls = [...(editForm.plants || [])]; pls[i] = { ...pls[i], lat: r.lat, lng: r.lng }; setEditForm(p => ({ ...p, plants: pls })); } else alert('Not found'); }} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid ' + C.navy, background: 'none', color: C.navy, fontSize: 9, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>📍</button></div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-                  <div><div style={lS}>CITY</div><input value={pl.city || ''} onChange={e => { const pls = [...(editForm.plants || [])]; pls[i] = { ...pls[i], city: e.target.value }; setEditForm(p => ({ ...p, plants: pls })); }} style={iS} /></div>
-                  <div><div style={lS}>STATE</div><input value={pl.state || ''} onChange={e => { const pls = [...(editForm.plants || [])]; pls[i] = { ...pls[i], state: e.target.value }; setEditForm(p => ({ ...p, plants: pls })); }} style={iS} /></div>
-                  <div><div style={lS}>COUNTRY</div><input value={pl.country || ''} onChange={e => { const pls = [...(editForm.plants || [])]; pls[i] = { ...pls[i], country: e.target.value }; setEditForm(p => ({ ...p, plants: pls })); }} style={iS} /></div>
-                </div>
-              </div>
-            ))}
-
-            {/* ── SECTION: Contacts ── */}
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.blue, marginTop: 16, marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid ' + C.navy + '40', display: 'flex', justifyContent: 'space-between' }}>
-              <span>CONTACTS</span>
-              <button onClick={() => setEditForm(p => ({ ...p, contacts: [...(p.contacts || []), { name: '', role: '', email: '', phone: '', isPrimary: false }] }))} style={{ padding: '2px 10px', borderRadius: 4, border: '1px dashed ' + C.navy, background: 'none', color: C.navy, fontSize: 9, fontWeight: 600, cursor: 'pointer' }}>+ Add Contact</button>
-            </div>
-            {(editForm.contacts || []).length === 0 && <div style={{ fontSize: 10, color: C.muted, marginBottom: 8, fontStyle: 'italic' }}>No contacts. Add plant managers, maintenance managers, etc.</div>}
-            {(editForm.contacts || []).map((ct, i) => (
-              <div key={i} style={{ background: '#f8f9fb', borderRadius: 8, padding: 10, marginBottom: 4, border: '1px solid #eef0f2', position: 'relative' }}>
-                <button onClick={() => { const cts = [...(editForm.contacts || [])]; cts.splice(i, 1); setEditForm(p => ({ ...p, contacts: cts })); }} style={{ position: 'absolute', top: 6, right: 8, border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 14 }}>x</button>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.5fr 1.5fr 1fr', gap: 6 }}>
-                  <div><div style={lS}>NAME</div><input value={ct.name || ''} onChange={e => { const cts = [...(editForm.contacts || [])]; cts[i] = { ...cts[i], name: e.target.value }; setEditForm(p => ({ ...p, contacts: cts })); }} style={iS} /></div>
-                  <div><div style={lS}>ROLE / TITLE</div><input value={ct.role || ''} onChange={e => { const cts = [...(editForm.contacts || [])]; cts[i] = { ...cts[i], role: e.target.value }; setEditForm(p => ({ ...p, contacts: cts })); }} placeholder="Plant Manager" style={iS} /></div>
-                  <div><div style={lS}>EMAIL</div><input value={ct.email || ''} onChange={e => { const cts = [...(editForm.contacts || [])]; cts[i] = { ...cts[i], email: e.target.value }; setEditForm(p => ({ ...p, contacts: cts })); }} style={iS} /></div>
-                  <div><div style={lS}>PHONE</div><input value={ct.phone || ''} onChange={e => { const cts = [...(editForm.contacts || [])]; cts[i] = { ...cts[i], phone: e.target.value }; setEditForm(p => ({ ...p, contacts: cts })); }} style={iS} /></div>
-                </div>
-                <label style={{ fontSize: 9, display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, color: C.muted }}><input type="checkbox" checked={ct.isPrimary || false} onChange={e => { const cts = [...(editForm.contacts || [])]; cts[i] = { ...cts[i], isPrimary: e.target.checked }; setEditForm(p => ({ ...p, contacts: cts })); }} /> Primary contact</label>
-              </div>
-            ))}
-
-            {/* ── SECTION: Installed Equipment ── */}
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.blue, marginTop: 16, marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid ' + C.navy + '40', display: 'flex', justifyContent: 'space-between' }}>
-              <span>INSTALLED EQUIPMENT</span>
-              <button onClick={() => setEditForm(p => ({ ...p, equipment: [...(p.equipment || []), { model: '', serial: '', year: '', status: 'active', companyId: '', notes: '' }] }))} style={{ padding: '2px 10px', borderRadius: 4, border: '1px dashed ' + C.navy, background: 'none', color: C.navy, fontSize: 9, fontWeight: 600, cursor: 'pointer' }}>+ Add Equipment</button>
-            </div>
-            {(editForm.equipment || []).length === 0 && <div style={{ fontSize: 10, color: C.muted, marginBottom: 8, fontStyle: 'italic' }}>No equipment. Add machines with brand, model, serial number.</div>}
-            {(editForm.equipment || []).map((eq, i) => (
-              <div key={i} style={{ background: '#f8f9fb', borderRadius: 8, padding: 10, marginBottom: 4, border: '1px solid #eef0f2', position: 'relative' }}>
-                <button onClick={() => { const eqs = [...(editForm.equipment || [])]; eqs.splice(i, 1); setEditForm(p => ({ ...p, equipment: eqs })); }} style={{ position: 'absolute', top: 6, right: 8, border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 14 }}>x</button>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.5fr 1fr 0.6fr 0.8fr', gap: 6 }}>
-                  <div><div style={lS}>BRAND</div><select value={eq.companyId || ''} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], companyId: e.target.value || null }; setEditForm(p => ({ ...p, equipment: eqs })); }} style={iS}><option value="">Select brand...</option>{companies.map(co => <option key={co.id} value={co.id}>{co.name}</option>)}</select></div>
-                  <div><div style={lS}>MODEL</div><input value={eq.model || ''} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], model: e.target.value }; setEditForm(p => ({ ...p, equipment: eqs })); }} placeholder="e.g. VP125" style={iS} /></div>
-                  <div><div style={lS}>SERIAL #</div><input value={eq.serial || ''} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], serial: e.target.value }; setEditForm(p => ({ ...p, equipment: eqs })); }} style={iS} /></div>
-                  <div><div style={lS}>YEAR</div><input type="number" value={eq.year || ''} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], year: e.target.value }; setEditForm(p => ({ ...p, equipment: eqs })); }} style={iS} /></div>
-                  <div><div style={lS}>STATUS</div><select value={eq.status || 'active'} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], status: e.target.value }; setEditForm(p => ({ ...p, equipment: eqs })); }} style={iS}><option value="active">Active</option><option value="service">Service</option><option value="idle">Idle</option></select></div>
-                </div>
-                <div style={{ marginTop: 4 }}><div style={lS}>EQUIPMENT NOTES</div><input value={eq.notes || ''} onChange={e => { const eqs = [...(editForm.equipment || [])]; eqs[i] = { ...eqs[i], notes: e.target.value }; setEditForm(p => ({ ...p, equipment: eqs })); }} placeholder="Notes about this equipment..." style={iS} /></div>
-              </div>
-            ))}
-
-            {/* Save / Cancel */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20, paddingTop: 12, borderTop: '1px solid ' + C.border }}>
-              <button onClick={() => setEditForm(null)} style={{ padding: '10px 24px', borderRadius: 8, border: '1px solid ' + C.border, background: '#fff', color: '#666', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={saveCustomer} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: C.navy, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{editForm.id ? 'Update Customer' : 'Add Customer'}</button>
-            </div>
+            <CustomerForm form={editForm} setForm={setEditForm} companies={companies} allCustomers={customers} onSave={saveCustomer} onCancel={() => setEditForm(null)} isNew={!editForm.id} />
           </div>
         </div>
+      </div>}
       </div>}
     </div>
   );
