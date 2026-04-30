@@ -246,11 +246,6 @@ export default function AdminPage() {
       try { const fr = await fetch('/api/customers'); const fd = await fr.json(); if (fd.customers) setCustomers(fd.customers); } catch {}
       setShowModal(null);setOk(isNew?'Customer added':'Customer updated');setTimeout(()=>setOk(''),3000);}catch(e){setErr(e.message);}
   };
-      // Reload full list
-      try { const fr = await fetch('/api/customers'); const fd = await fr.json(); if (fd.customers) setCustomers(fd.customers); } catch {}
-      setShowModal(null); setOk(isNew ? 'Customer added' : 'Customer updated'); setTimeout(() => setOk(''), 3000);
-    } catch(e) { setErr(e.message); }
-  };
 
   const TB=({id,l})=><button onClick={()=>setTab(id)} style={{padding:'7px 14px',borderRadius:6,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,background:tab===id?'#fff':'transparent',color:tab===id?C.navy:'#888',boxShadow:tab===id?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>;
   const iS={width:'100%',padding:'8px 12px',borderRadius:6,border:'1px solid #e2e4e9',fontSize:12,boxSizing:'border-box'};
