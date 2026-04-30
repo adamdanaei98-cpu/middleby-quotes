@@ -133,7 +133,7 @@ export default function CustomerForm({ form, setForm, companies, allCustomers, o
                   setForm(p => ({ ...p, plants: pls }));
                 }} style={iS}>
                   <option value="">Select plant...</option>
-                  <option value="__hq__">\u{1F4CD} HQ (same as main address)</option>
+                  <option value="__hq__">📍 HQ (same as main address)</option>
                   {currentPlantNames.map(n => <option key={n} value={n}>{n}</option>)}
                   <option value="__custom__">+ New Plant</option>
                 </select>
