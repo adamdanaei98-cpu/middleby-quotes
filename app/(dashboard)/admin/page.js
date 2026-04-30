@@ -1,5 +1,6 @@
 // app/(dashboard)/admin/page.js
 'use client';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import CustomerForm from '@/components/CustomerForm';
 import { useQuote } from '@/components/QuoteProvider';
@@ -129,6 +130,12 @@ function EditItemModal({item,onClose,onSave,onDelete,color}){
 export default function AdminPage() {
   const { user, canAdmin } = useAuth();
   const { cats, setCats, companies, setCompanies, customers, setCustomers, terms, setTerms, navLogo, setNavLogo, pdfLogo, setPdfLogo, navColor, setNavColor, appName, setAppName, loading: qL } = useQuote();
+  const [fullCustomers, setFullCustomers] = useState([]);
+
+  // Load full customer data from field-map API (includes plants, contacts, equipment)
+  useEffect(() => {
+    fetch('/api/field-map/customers').then(r => r.json()).then(d => setFullCustomers(d.customers || [])).catch(() => {});
+  }, [customers]); // re-fetch when base customers change
   const router = useRouter();
   const [co, setCo] = useState(null);
   const [tab, setTab] = useState('profiles');
@@ -242,8 +249,9 @@ export default function AdminPage() {
         const r = await fetch('/api/field-map/customers/' + data.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
         const d = await r.json(); if (!r.ok) { setErr(d.error); return; }
       }
-      // Reload
+      // Reload both customer lists
       try { const fr = await fetch('/api/customers'); const fd = await fr.json(); if (fd.customers) setCustomers(fd.customers); } catch {}
+      try { const fr2 = await fetch('/api/field-map/customers'); const fd2 = await fr2.json(); if (fd2.customers) setFullCustomers(fd2.customers); } catch {}
       setShowModal(null);setOk(isNew?'Customer added':'Customer updated');setTimeout(()=>setOk(''),3000);}catch(e){setErr(e.message);}
   };
 
@@ -446,12 +454,15 @@ export default function AdminPage() {
 
       {/* ═══ CUSTOMERS ═══ */}
       {tab==='customers'&&(()=>{
-        let filtered = customers.filter(c => {
+        // Use fullCustomers (from field-map API) which has plants, contacts, equipment
+        const custData = fullCustomers.length > 0 ? fullCustomers : customers;
+        let filtered = custData.filter(c => {
+          if (!c.active && c.active !== undefined) return false; // hide inactive
           if (co === '__corporate' || !co) return true;
           const dco = dbCos.find(d => companies[co]?.id === d.id);
-          return dco && c.companyId === dco.id;
+          return dco && (c.companyId === dco.id || c.primaryCompanyId === dco.id);
         });
-        if (custSearch) { const s=custSearch.toLowerCase(); filtered=filtered.filter(c=>(c.name||'').toLowerCase().includes(s)||(c.contact||'').toLowerCase().includes(s)||(c.email||'').toLowerCase().includes(s)||(c.plant||'').toLowerCase().includes(s)); }
+        if (custSearch) { const s=custSearch.toLowerCase(); filtered=filtered.filter(c=>(c.name||'').toLowerCase().includes(s)||(c.contact||'').toLowerCase().includes(s)||(c.email||'').toLowerCase().includes(s)||(c.plants||[]).some(p=>(p.name||'').toLowerCase().includes(s))); }
         // Column filters
         Object.entries(custColVals).forEach(([col,vals])=>{if(vals&&vals.size>0)filtered=filtered.filter(c=>{let v='';if(col==='name')v=c.name||'';else if(col==='plant')v=c.plant||'\u2014';else if(col==='contact')v=c.contact||'\u2014';return vals.has(v);});});
         filtered.sort((a,b)=>{ const av=(a[custSort.k]||'').toString().toLowerCase(); const bv=(b[custSort.k]||'').toString().toLowerCase(); return custSort.d==='asc'?av.localeCompare(bv):bv.localeCompare(av); });
@@ -474,35 +485,40 @@ export default function AdminPage() {
           :filtered.map(c=>{
             const editCust = async () => {
               if(!canEditCo(co)) return;
-              try{const r=await fetch('/api/field-map/customers');const d=await r.json();const full=(d.customers||[]).find(x=>x.id===c.id);
-              setModalData({...c,...(full||{}),keywords:c.keywords||[],contacts:full?.contacts||[],plants:full?.plants||[],equipment:(full?.equipment||[]).map(e=>({...e,companyId:e.companyId||e.company?.id||null}))});
-              }catch{setModalData({...c,keywords:c.keywords||[],contacts:[],plants:[],equipment:[]});}
+              const full = fullCustomers.find(x => x.id === c.id) || c;
+              setModalData({
+                ...full, keywords: full.keywords || [], contacts: full.contacts || [],
+                plants: (full.plants || []).map(p => ({ ...p, equipment: (p.equipment || []).map(e => ({ ...e, companyId: e.companyId || e.company?.id || null })) })),
+                equipment: (full.equipment || []).map(e => ({ ...e, companyId: e.companyId || e.company?.id || null })),
+              });
               setShowModal('editCust');
             };
+            const plantCount = (c.plants || []).length;
+            const equipCount = (c.equipment?.length || 0) + (c.plants || []).reduce((t, p) => t + (p.equipment?.length || 0), 0);
             return <div key={c.id} style={{background:'#fff',borderRadius:10,border:'1px solid #e2e4e9',marginBottom:8,overflow:'hidden'}}>
-              {/* Customer header - like catalog section */}
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'#f8f9fb',cursor:'pointer'}} onClick={editCust}>
-                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,flex:1}}>
                   <span style={{width:3,height:20,borderRadius:2,background:'#003250'}}/>
                   <span style={{fontSize:14,fontWeight:700,color:'#003250'}}>{c.name}</span>
                   {c.concept&&<span style={{fontSize:9,color:C.muted}}>{c.concept}</span>}
                   {(c.keywords||[]).map(k=><span key={k} style={{fontSize:8,background:'#e0e7ff',color:'#3b5998',padding:'1px 5px',borderRadius:4}}>{k}</span>)}
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  <span style={{fontSize:9,color:C.muted}}>{c.contact||''}{c.phone?' · '+c.phone:''}</span>
+                  {plantCount > 0 && <span style={{fontSize:9,color:C.navy,fontWeight:600}}>{plantCount} plant{plantCount>1?'s':''}</span>}
+                  {equipCount > 0 && <span style={{fontSize:9,color:C.muted}}>{equipCount} equip</span>}
+                  <span style={{fontSize:9,color:C.muted}}>{c.contact||''}</span>
                 </div>
               </div>
-              {/* Plant rows - like catalog items */}
               <div>
-                {c.address&&<div style={{display:'flex',alignItems:'center',padding:'6px 16px 6px 36px',borderTop:'1px solid #f3f4f6',fontSize:11}}>
-                  <span style={{flex:2,fontWeight:500,color:'#333'}}>{c.address}</span>
-                  <span style={{flex:1,color:C.muted,fontSize:10}}>{[c.city,c.state].filter(Boolean).join(', ')}</span>
+                {c.address&&<div style={{padding:'5px 16px 5px 36px',borderTop:'1px solid #f3f4f6',fontSize:11,display:'flex'}}>
+                  <span style={{flex:2,fontWeight:500,color:'#333'}}>HQ: {[c.city,c.state].filter(Boolean).join(', ')||c.address}</span>
                   <span style={{flex:1,color:C.muted,fontSize:10}}>{c.email||''}</span>
+                  <span style={{flex:1,color:C.muted,fontSize:10}}>{c.phone||''}</span>
                 </div>}
-                {c.plant&&<div style={{display:'flex',alignItems:'center',padding:'6px 16px 6px 36px',borderTop:'1px solid #f3f4f6',fontSize:11}}>
-                  <span style={{flex:2,fontWeight:500,color:'#555'}}>{c.plant}</span>
-                  <span style={{flex:1}}></span><span style={{flex:1}}></span>
-                </div>}
+                {(c.plants||[]).map((pl,pi)=><div key={pi} style={{padding:'4px 16px 4px 36px',borderTop:'1px solid #f3f4f6',fontSize:11,display:'flex'}}>
+                  <span style={{flex:2,fontWeight:500,color:'#555'}}>◆ {pl.name} — {[pl.city,pl.state].filter(Boolean).join(', ')||pl.address||''}</span>
+                  <span style={{flex:1,color:C.muted,fontSize:10}}>{(pl.equipment||[]).length > 0 ? (pl.equipment||[]).length + ' equipment' : ''}</span>
+                </div>)}
               </div>
             </div>;
           })}
@@ -601,7 +617,7 @@ export default function AdminPage() {
         </div>}
 
         {(showModal==='addCust'||showModal==='editCust')&&<div>
-          <CustomerForm form={modalData} setForm={setModalData} companies={dbCos} allCustomers={customers} onSave={()=>saveCust(modalData,showModal==='addCust')} onCancel={()=>setShowModal(null)} isNew={showModal==='addCust'} />
+          <CustomerForm form={modalData} setForm={setModalData} companies={dbCos} allCustomers={fullCustomers.length > 0 ? fullCustomers : customers} onSave={()=>saveCust(modalData,showModal==='addCust')} onCancel={()=>setShowModal(null)} isNew={showModal==='addCust'} />
         </div>}
       </div></div>}
 
