@@ -493,7 +493,7 @@ export default function AdminPage() {
               setShowModal('editCust');
             };
             const plantCount = (c.plants || []).length;
-            const equipCount = (c.equipment?.length || 0) + (c.plants || []).reduce((t, p) => t + (p.equipment?.length || 0), 0);
+            const equipCount = (c.equipment?.length || 0);
             return <div key={c.id} style={{background:'#fff',borderRadius:10,border:'1px solid #e2e4e9',marginBottom:8,overflow:'hidden'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'#f8f9fb',cursor:'pointer'}} onClick={editCust}>
                 <div style={{display:'flex',alignItems:'center',gap:10,flex:1}}>

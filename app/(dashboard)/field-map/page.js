@@ -234,7 +234,7 @@ export default function FieldMapPage() {
           const dist = myLocation && c.lat && c.lng ? haversine(myLocation.lat, myLocation.lng, c.lat, c.lng) : null;
           const lastVisit = c.visits?.[0];
           const plantCount = (c.plants || []).length;
-          const equipCount = (c.equipment?.length || 0) + (c.plants || []).reduce((t, p) => t + (p.equipment?.length || 0), 0);
+          const equipCount = (c.equipment?.length || 0);
           return (
             <div key={c.id} style={{ borderBottom: '1px solid #eef0f2' }}>
               {/* Customer header */}
@@ -292,20 +292,64 @@ export default function FieldMapPage() {
           <button onClick={() => setSelected(null)} style={{ position: 'absolute', top: 10, right: 12, border: 'none', background: 'none', fontSize: 18, cursor: 'pointer', color: C.muted }}>x</button>
           {(selected.primaryCompany || selected.company) && (() => { const co = selected.primaryCompany || selected.company; return <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', background: co.color, padding: '2px 10px', borderRadius: 10 }}>{co.name}</span>; })()}
           <div style={{ fontSize: 18, fontWeight: 800, color: C.navy, marginTop: 6 }}>{selected.name}</div>
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{[selected.city, selected.state, selected.country].filter(Boolean).join(', ')}{selected.concept ? ' · ' + selected.concept : ''}</div>
-          {myLocation && selected.lat && selected.lng && <div style={{ fontSize: 10, color: C.blue, fontWeight: 600, marginTop: 2 }}>{Math.round(haversine(myLocation.lat, myLocation.lng, selected.lat, selected.lng))} miles away</div>}
+          {selected.concept && <div style={{ fontSize: 10, color: C.muted }}>{selected.concept}</div>}
 
-          <div style={{ display: 'flex', gap: 6, marginTop: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 6, marginTop: 10, marginBottom: 14, flexWrap: 'wrap' }}>
             <button onClick={() => { setVisitModal(selected); loadVisitHistory(selected.id); }} style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: C.navy, color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Log Visit</button>
-            {selected.lat && selected.lng && <a href={`https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`} target="_blank" rel="noopener" style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.blue, color: C.blue, fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Directions</a>}
-            {selected.phone && <a href={'tel:' + selected.phone.replace(/[^0-9+]/g, '')} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.green, color: C.green, fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Call</a>}
-            {selected.email && <a href={'mailto:' + selected.email} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #d97706', color: '#d97706', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Email</a>}
             {canEdit && <button onClick={() => setEditForm({ ...selected, repIds: (selected.fieldMapReps || []).map(r => r.userId), equipment: (selected.equipment || []).map(e => ({ ...e, companyId: e.companyId || e.company?.id || null })), contacts: selected.contacts || [], plants: (selected.plants || []).map(p => ({ ...p, equipment: (p.equipment || []).map(e => ({ ...e, companyId: e.companyId || e.company?.id || null })) })) })} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid ' + C.muted, color: C.muted, fontSize: 10, fontWeight: 600, background: 'none', cursor: 'pointer' }}>Edit</button>}
             {canEdit && <button onClick={async () => { if (!confirm('Delete ' + selected.name + '?')) return; await fetch('/api/field-map/customers/' + selected.id, { method: 'DELETE' }); const r = await fetch('/api/field-map/customers'); const d = await r.json(); setCustomers(d.customers || []); setSelected(null); }} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #dc2626', color: '#dc2626', fontSize: 10, fontWeight: 600, background: 'none', cursor: 'pointer' }}>Delete</button>}
           </div>
 
+          {/* ── LOCATIONS (HQ + Plants) ── */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={lS}>LOCATIONS</div>
+
+            {/* HQ */}
+            {selected.address && <div onClick={() => { if (selected.lat && selected.lng && mapInstance.current) mapInstance.current.flyTo([selected.lat, selected.lng], 12, { duration: 0.5 }); }} style={{ padding: '8px 10px', background: '#f0f4f8', borderRadius: 8, marginBottom: 4, cursor: 'pointer', border: '1px solid #d0d9e4' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.navy }}>● HQ</div>
+                  <div style={{ fontSize: 10, color: '#555' }}>{selected.address}</div>
+                  <div style={{ fontSize: 9, color: C.muted }}>{[selected.city, selected.state, selected.country].filter(Boolean).join(', ')}</div>
+                  {myLocation && selected.lat && selected.lng && <div style={{ fontSize: 9, color: C.blue, fontWeight: 600 }}>{Math.round(haversine(myLocation.lat, myLocation.lng, selected.lat, selected.lng))} mi</div>}
+                </div>
+                {selected.lat && selected.lng && <a href={`https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`} target="_blank" rel="noopener" onClick={e => e.stopPropagation()} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid ' + C.blue, color: C.blue, fontSize: 9, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>Directions</a>}
+              </div>
+              {/* Equipment at HQ (no plantId) */}
+              {(selected.equipment || []).filter(e => !e.plantId && !e.plant).length > 0 && <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #d0d9e4' }}>
+                {(selected.equipment || []).filter(e => !e.plantId && !e.plant).map(e => <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontSize: 10 }}>
+                  <span>{e.model} {e.company && <span style={{ fontSize: 7, fontWeight: 700, color: '#fff', background: e.company.color, padding: '0 4px', borderRadius: 4 }}>{e.company.name}</span>}</span>
+                  <span style={{ fontSize: 8, color: e.status === 'active' ? C.green : C.muted }}>{e.status}</span>
+                </div>)}
+              </div>}
+            </div>}
+
+            {/* Plants */}
+            {(selected.plants || []).map((pl, pi) => (
+              <div key={pi} onClick={() => { if (pl.lat && pl.lng && mapInstance.current) mapInstance.current.flyTo([pl.lat, pl.lng], 12, { duration: 0.5 }); }} style={{ padding: '8px 10px', background: '#fafbfc', borderRadius: 8, marginBottom: 4, cursor: 'pointer', border: '1px solid #eef0f2' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.navy }}>◆ {pl.name}</div>
+                    {pl.address && <div style={{ fontSize: 10, color: '#555' }}>{pl.address}</div>}
+                    <div style={{ fontSize: 9, color: C.muted }}>{[pl.city, pl.state, pl.country].filter(Boolean).join(', ')}</div>
+                    {myLocation && pl.lat && pl.lng && <div style={{ fontSize: 9, color: C.blue, fontWeight: 600 }}>{Math.round(haversine(myLocation.lat, myLocation.lng, pl.lat, pl.lng))} mi</div>}
+                  </div>
+                  {pl.lat && pl.lng && <a href={`https://www.google.com/maps/dir/?api=1&destination=${pl.lat},${pl.lng}`} target="_blank" rel="noopener" onClick={e => e.stopPropagation()} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid ' + C.blue, color: C.blue, fontSize: 9, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>Directions</a>}
+                </div>
+                {/* Equipment at this plant */}
+                {(pl.equipment || []).length > 0 && <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #eef0f2' }}>
+                  {(pl.equipment || []).map(e => <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontSize: 10 }}>
+                    <span>{e.model} {e.company && <span style={{ fontSize: 7, fontWeight: 700, color: '#fff', background: e.company.color, padding: '0 4px', borderRadius: 4 }}>{e.company.name}</span>}</span>
+                    <span style={{ fontSize: 8, color: e.status === 'active' ? C.green : C.muted }}>{e.status}</span>
+                  </div>)}
+                </div>}
+              </div>
+            ))}
+          </div>
+
           {/* Contacts */}
-          <div style={{ marginBottom: 14 }}><div style={lS}>CONTACTS{selected.contacts?.length > 0 ? ' \u00b7 ' + selected.contacts.length : ''}</div>
+          {(selected.contacts?.length > 0 || selected.contact) && <div style={{ marginBottom: 14 }}><div style={lS}>CONTACTS</div>
             {selected.contacts?.length > 0 ? selected.contacts.map((ct, i) => (
               <div key={i} style={{ padding: '5px 0', borderBottom: '1px solid #f3f4f6' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -318,38 +362,16 @@ export default function FieldMapPage() {
                   {ct.email && <a href={'mailto:' + ct.email} style={{ fontSize: 10, color: '#333', textDecoration: 'none', borderBottom: '1px dotted #ccc' }}>{ct.email}</a>}
                 </div>
               </div>
-            )) : selected.contact ? <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#333' }}>{selected.contact}</div>
-              {selected.contactRole && <div style={{ fontSize: 10, color: C.muted }}>{selected.contactRole}</div>}
-              {selected.phone && <div style={{ fontSize: 11, marginTop: 2 }}><a href={'tel:' + selected.phone.replace(/[^0-9+]/g, '')} style={{ color: '#333', textDecoration: 'none', borderBottom: '1px dotted #ccc' }}>{selected.phone}</a></div>}
-              {selected.email && <div style={{ fontSize: 11 }}><a href={'mailto:' + selected.email} style={{ color: '#333', textDecoration: 'none', borderBottom: '1px dotted #ccc' }}>{selected.email}</a></div>}
-            </div> : <div style={{ fontSize: 10, color: C.muted }}>No contacts on file</div>}
-            {selected.address && <div style={{ fontSize: 10, color: C.muted, marginTop: 6 }}>{selected.address}</div>}
-          </div>
+            )) : selected.contact && <div>
+              <div style={{ fontSize: 12, fontWeight: 600 }}>{selected.contact}</div>
+              {selected.phone && <a href={'tel:' + selected.phone.replace(/[^0-9+]/g, '')} style={{ fontSize: 10, color: '#333', textDecoration: 'none' }}>{selected.phone}</a>}
+              {selected.email && <a href={'mailto:' + selected.email} style={{ fontSize: 10, color: '#333', textDecoration: 'none' }}>{selected.email}</a>}
+            </div>}
+          </div>}
+
           {/* Keywords */}
           {selected.keywords?.length > 0 && <div style={{ marginBottom: 14 }}><div style={lS}>KEYWORDS</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>{selected.keywords.map(k => <span key={k} style={{ fontSize: 8, background: '#e0e7ff', color: '#3b5998', padding: '2px 6px', borderRadius: 4 }}>{k}</span>)}</div>
-          </div>}
-
-          {/* Reps */}
-          {selected.fieldMapReps?.length > 0 && <div style={{ marginBottom: 14 }}><div style={lS}>SALES REPS · {selected.fieldMapReps.length}</div>
-            {selected.fieldMapReps.map(r => <div key={r.id} style={{ padding: '4px 0', borderBottom: '1px solid #f3f4f6' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 11, fontWeight: 600 }}>{r.user.name}</span>
-              {r.user.primaryCompany && <span style={{ fontSize: 8, color: r.user.primaryCompany.color, fontWeight: 600 }}>{r.user.primaryCompany.name}</span>}</div>
-              {r.user.email && <div style={{ fontSize: 9, color: C.muted }}>{r.user.email}</div>}
-            </div>)}
-          </div>}
-
-          {/* Equipment */}
-          {selected.equipment?.length > 0 && <div style={{ marginBottom: 14 }}><div style={lS}>INSTALLED EQUIPMENT · {selected.equipment.length}</div>
-            {selected.equipment.map(e => <div key={e.id} style={{ padding: '5px 0', borderBottom: '1px solid #f3f4f6' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 11, fontWeight: 600 }}>{e.model}</span>
-                {e.company && <span style={{ fontSize: 7, fontWeight: 700, color: '#fff', background: e.company.color, padding: '1px 5px', borderRadius: 6, marginLeft: 4 }}>{e.company.name}</span>}
-                <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 6px', borderRadius: 8, background: e.status === 'active' ? '#dcfce7' : e.status === 'service' ? '#fef3c7' : '#f3f4f6', color: e.status === 'active' ? C.green : e.status === 'service' ? '#d97706' : C.muted }}>{e.status}</span>
-              </div>
-              <div style={{ fontSize: 9, color: C.muted }}>{e.serial ? 'SN ' + e.serial : ''}{e.year ? ' · ' + e.year : ''}</div>
-            </div>)}
           </div>}
 
           {/* Last visit */}
