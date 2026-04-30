@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import CustomerForm from '@/components/CustomerForm';
 import { useQuote } from '@/components/QuoteProvider';
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { gP, cTot, fP, C } from '@/lib/transform';
 
