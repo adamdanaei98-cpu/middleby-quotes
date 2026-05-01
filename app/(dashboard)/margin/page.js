@@ -51,7 +51,6 @@ function MarginContent() {
         const lpKey=k+':'+it.id;
         let lp = oLp[lpKey]!==undefined ? oLp[lpKey] : gP(it,s);
         const is3=sn.toLowerCase().includes('3rd');
-        if(!is3 && oLp[lpKey]===undefined) lp=Math.round(lp*(1+(rates.markup||10)/100));
         const mg=lp-cost; const mp=lp>0?Math.round(mg/lp*100):0;
         rows.push({dn:itemDN(it,s),q,mat,lh,lc,po,cost,lp,mg,mp,itId:it.id,coKey:k});
         tMat+=mat; tLH+=lh; tLC+=lc; tPO+=po; tList+=lp; if(is3)t3rd+=lp;
