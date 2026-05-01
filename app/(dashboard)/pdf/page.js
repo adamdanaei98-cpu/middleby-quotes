@@ -8,13 +8,14 @@ import { gP, cTot, itemDN, fP, C } from '@/lib/transform';
 
 function PDFContent() {
   const { user } = useAuth();
-  const { cats, sels, companies, companyOrder, ci, mode, terms, loading, loadQuote, navLogo, pdfLogo } = useQuote();
+  const { cats, sels, companies, companyOrder, ci, mode, terms, loading, loadQuote, navLogo, pdfLogo, priceOverrides, setPriceOverrides } = useQuote();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
   const [quoteLoaded, setQuoteLoaded] = useState(false);
   const [loadingQuote, setLoadingQuote] = useState(!!quoteId);
   const [editing, setEditing] = useState(false);
-  const [oPrices, setOPrices] = useState({}); // price overrides: { 'coKey:itemId': number }
+  const oPrices = priceOverrides;
+  const setOPrices = setPriceOverrides;
 
   useEffect(() => {
     if (quoteId && !loading && !quoteLoaded) {
@@ -89,6 +90,7 @@ function PDFContent() {
         <div style={{display:'inline-flex',gap:10,alignItems:'center'}}>
           <button onClick={()=>window.print()} style={{padding:'10px 28px',borderRadius:8,border:'none',background:C.navy,fontSize:13,fontWeight:700,color:'#fff',cursor:'pointer'}}>Save as PDF</button>
           {isAdmin&&<button onClick={()=>setEditing(!editing)} style={{padding:'10px 20px',borderRadius:8,border:editing?'2px solid #e0c000':'1px solid #ccc',background:editing?'#fffde7':'#fff',fontSize:12,fontWeight:700,color:editing?'#b8860b':'#666',cursor:'pointer'}}>{editing?'✓ Editing On':'Edit Mode'}</button>}
+          {isAdmin&&Object.keys(oPrices).length>0&&<button onClick={()=>{if(confirm('Reset all price edits to catalog defaults?'))setPriceOverrides({});}} style={{padding:'10px 20px',borderRadius:8,border:'1px solid #dc2626',background:'#fff',fontSize:12,fontWeight:700,color:'#dc2626',cursor:'pointer'}}>Reset Edits</button>}
         </div>
       </div>
 

@@ -8,14 +8,16 @@ import { gP, itemDN, fP, fD, C, cTot } from '@/lib/transform';
 
 function MarginContent() {
   const { user } = useAuth();
-  const { cats, sels, companies, companyOrder, ci, loading, loadQuote } = useQuote();
+  const { cats, sels, companies, companyOrder, ci, loading, loadQuote, priceOverrides, setPriceOverrides, matOverrides, setMatOverrides } = useQuote();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
   const [quoteLoaded, setQuoteLoaded] = useState(false);
   const [loadingQuote, setLoadingQuote] = useState(!!quoteId);
   const [editing, setEditing] = useState(false);
-  const [oMat, setOMat] = useState({}); // material overrides
-  const [oLp, setOLp] = useState({}); // list price overrides
+  const oMat = matOverrides;
+  const setOMat = setMatOverrides;
+  const oLp = priceOverrides;
+  const setOLp = setPriceOverrides;
 
   useEffect(() => {
     if (quoteId && !loading && !quoteLoaded) {
@@ -82,6 +84,7 @@ function MarginContent() {
         <div style={{display:'inline-flex',gap:10,alignItems:'center'}}>
           <button onClick={()=>window.print()} style={{padding:'10px 28px',borderRadius:8,border:'none',background:C.navy,fontSize:13,fontWeight:700,color:'#fff',cursor:'pointer'}}>Save as PDF</button>
           {isAdmin&&<button onClick={()=>setEditing(!editing)} style={{padding:'10px 20px',borderRadius:8,border:editing?'2px solid #e0c000':'1px solid #ccc',background:editing?'#fffde7':'#fff',fontSize:12,fontWeight:700,color:editing?'#b8860b':'#666',cursor:'pointer'}}>{editing?'✓ Editing On':'Edit Mode'}</button>}
+          {isAdmin&&(Object.keys(oLp).length>0||Object.keys(oMat).length>0)&&<button onClick={()=>{if(confirm('Reset all edits to catalog defaults?')){setPriceOverrides({});setMatOverrides({});}}} style={{padding:'10px 20px',borderRadius:8,border:'1px solid #dc2626',background:'#fff',fontSize:12,fontWeight:700,color:'#dc2626',cursor:'pointer'}}>Reset Edits</button>}
         </div>
       </div>
 
