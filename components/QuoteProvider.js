@@ -9,6 +9,7 @@ export function QuoteProvider({ children }) {
   const [sels, setSels] = useState({});
   const [companies, setCompanies] = useState({});
   const [companyOrder, setCompanyOrder] = useState([]);
+  const [activeCos, setActiveCos] = useState({});
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('bundle');
@@ -71,7 +72,7 @@ export function QuoteProvider({ children }) {
   };
 
   return (
-    <QuoteContext.Provider value={{ cats, setCats, sels, setSels, companies, setCompanies, companyOrder, setCompanyOrder, customers, setCustomers, loading, mode, setMode, ci, setCi, approval, setApproval, terms, setTerms, navLogo, setNavLogo, pdfLogo, setPdfLogo, navColor, setNavColor, appName, setAppName, tots, gt, loadQuote }}>
+    <QuoteContext.Provider value={{ cats, setCats, sels, setSels, companies, setCompanies, companyOrder, setCompanyOrder, activeCos, setActiveCos, customers, setCustomers, loading, mode, setMode, ci, setCi, approval, setApproval, terms, setTerms, navLogo, setNavLogo, pdfLogo, setPdfLogo, navColor, setNavColor, appName, setAppName, tots, gt, loadQuote }}>
       {children}
     </QuoteContext.Provider>
   );

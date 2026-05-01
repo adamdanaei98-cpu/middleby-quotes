@@ -374,6 +374,25 @@ export default function FieldMapPage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>{selected.keywords.map(k => <span key={k} style={{ fontSize: 8, background: '#e0e7ff', color: '#3b5998', padding: '2px 6px', borderRadius: 4 }}>{k}</span>)}</div>
           </div>}
 
+          {/* All Equipment (always visible) */}
+          {selected.equipment?.length > 0 && <div style={{ marginBottom: 14 }}>
+            <div style={lS}>ALL EQUIPMENT · {selected.equipment.length}</div>
+            {selected.equipment.map(e => <div key={e.id} style={{ padding: '5px 8px', marginBottom: 3, background: '#f8f9fb', borderRadius: 6, border: '1px solid #eef0f2' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 600 }}>{e.model}</span>
+                  {e.company && <span style={{ fontSize: 7, fontWeight: 700, color: '#fff', background: e.company.color, padding: '1px 5px', borderRadius: 4, marginLeft: 4 }}>{e.company.name}</span>}
+                </div>
+                <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 6px', borderRadius: 8, background: e.status === 'active' ? '#dcfce7' : '#f3f4f6', color: e.status === 'active' ? '#16a34a' : '#8b919e' }}>{e.status}</span>
+              </div>
+              <div style={{ fontSize: 9, color: '#8b919e' }}>
+                {e.serial ? 'SN: ' + e.serial : ''}{e.year ? ' · ' + e.year : ''}
+                {e.plant ? ' · ' + e.plant.name : ''}
+              </div>
+              {e.notes && <div style={{ fontSize: 9, color: '#555', fontStyle: 'italic', marginTop: 2 }}>{e.notes}</div>}
+            </div>)}
+          </div>}
+
           {/* Last visit */}
           {selected.visits?.[0] && <div style={{ marginBottom: 14 }}><div style={lS}>LAST VISIT</div>
             <div style={{ fontSize: 11, color: '#333' }}>{new Date(selected.visits[0].visitDate).toLocaleDateString()} — {VISIT_TYPES[selected.visits[0].type] || selected.visits[0].type}</div>
